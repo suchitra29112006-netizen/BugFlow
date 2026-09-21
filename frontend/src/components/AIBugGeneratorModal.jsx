@@ -1,18 +1,53 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
-import { Sparkles, X, Check, Loader2, Wand2 } from 'lucide-react';
+import { Sparkles, X, Check, Loader2, Wand2, Mic } from 'lucide-react';
 
 export const AIBugGeneratorModal = ({ isOpen, onClose, projects, onIssueCreated }) => {
   const [prompt, setPrompt] = useState('');
   const [selectedProject, setSelectedProject] = useState(projects[0]?.id || '');
   const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
   const [error, setError] = useState('');
   const [generatedReport, setGeneratedReport] = useState(null);
 
   if (!isOpen) return null;
 
+  const handleStartVoiceTriage = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Browser Speech Recognition API is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      setListening(true);
+      recognition.start();
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setPrompt(prev => prev ? `${prev} ${transcript}` : transcript);
+        setListening(false);
+      };
+
+      recognition.onerror = (err) => {
+        console.error("Speech recognition error:", err);
+        setListening(false);
+      };
+
+      recognition.onend = () => setListening(false);
+    } catch (err) {
+      console.error(err);
+      setListening(false);
+    }
+  };
+
   const handleGenerate = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!prompt.trim()) return;
 
     setLoading(true);
@@ -65,8 +100,8 @@ export const AIBugGeneratorModal = ({ isOpen, onClose, projects, onIssueCreated 
               <Sparkles size={20} color="#fff" />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>AI Bug Report Generator</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Type a short symptom and let Gemini expand it into a full bug report.</p>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>AI Bug Report & One-Tap Voice Triage</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Type or speak a short symptom and let Gemini synthesize a complete bug report.</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -93,11 +128,23 @@ export const AIBugGeneratorModal = ({ isOpen, onClose, projects, onIssueCreated 
             </div>
 
             <div className="form-group">
-              <label>Describe Bug / Symptom (Short Prompt)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                <label>Describe Bug / Symptom (Short Prompt or Speech)</label>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: listening ? '#ef4444' : 'transparent', color: listening ? '#fff' : '#10b981' }}
+                  onClick={handleStartVoiceTriage}
+                >
+                  <Mic size={14} className={listening ? 'animate-pulse' : ''} />
+                  {listening ? 'Listening...' : '🎙️ Voice Triage'}
+                </button>
+              </div>
+
               <textarea
                 className="form-textarea"
                 rows={4}
-                placeholder="e.g. User cannot complete checkout on mobile Safari when coupon code is applied..."
+                placeholder="e.g. Payment page crashes on Chrome mobile when clicking submit button..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 required

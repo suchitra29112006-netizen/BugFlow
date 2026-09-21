@@ -26,3 +26,4 @@ class User(Base):
     reported_issues = relationship("Issue", foreign_keys="Issue.reporter_id", back_populates="reporter")
     assigned_issues = relationship("Issue", foreign_keys="Issue.assigned_to", back_populates="assignee")
     comments = relationship("Comment", back_populates="user")
+    developer_profile = relationship("DeveloperProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

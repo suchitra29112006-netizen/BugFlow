@@ -1,29 +1,60 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Bug, LogOut, User as UserIcon, Sun, Moon, QrCode, FileText } from 'lucide-react';
+import { Bug, LogOut, User as UserIcon, Sun, Moon, QrCode, FileText, Download, Command, Search, Sparkles, Plus } from 'lucide-react';
+import { NotificationCenter } from './NotificationCenter';
+import { api } from '../services/api';
 
-export const Navbar = ({ theme, onToggleTheme, onOpenQRCode, onOpenWeeklyReport, onHome }) => {
+export const Navbar = ({ theme, onToggleTheme, onOpenQRCode, onOpenWeeklyReport, onHome, onSelectIssue, onOpenCommandPalette, onOpenCopilot, onOpenReportModal }) => {
   const { user, logout } = useAuth();
+
+  const handleExportCSV = () => {
+    api.exportAuditCSV();
+  };
 
   return (
     <header className="glass-panel" style={{ borderRadius: 0, borderTop: 0, borderLeft: 0, borderRight: 0, padding: '0.85rem 2rem', position: 'sticky', top: 0, zIndex: 100 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={onHome}>
-          <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #f97316 100%)', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)' }}>
-            <Bug size={22} color="#ffffff" />
+        {/* Brand & Command Palette Trigger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={onHome}>
+            <div style={{ background: 'linear-gradient(135deg, #10b981 0%, #f97316 100%)', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)' }}>
+              <Bug size={22} color="#ffffff" />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, background: 'linear-gradient(135deg, #10b981 0%, #f97316 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                BugFlow <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', verticalAlign: 'middle', marginLeft: '4px' }}>v3.0 AI</span>
+              </h2>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, background: 'linear-gradient(135deg, #10b981 0%, #f97316 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              BugFlow <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', verticalAlign: 'middle', marginLeft: '4px' }}>v1.0 AI</span>
-            </h2>
-          </div>
+
+          {/* Command Palette Button (Ctrl+K) */}
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenCommandPalette}
+            style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)', gap: '0.5rem' }}
+            title="Quick Command Search (Ctrl+K)"
+          >
+            <Search size={14} />
+            <span>Ask BugFlow...</span>
+            <span style={{ fontSize: '0.68rem', background: 'rgba(0,0,0,0.08)', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Ctrl+K</span>
+          </button>
         </div>
 
         {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           
+          {/* BugFlow Copilot AI Button */}
+          <button className="btn btn-primary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem', gap: '0.4rem' }} onClick={onOpenCopilot} title="Ask BugFlow Copilot AI">
+            <Sparkles size={16} />
+            <span>BugFlow AI</span>
+          </button>
+
+
+
+          {/* Notification Center */}
+          <NotificationCenter onSelectIssue={onSelectIssue} />
+
           {/* QR Code Button */}
           <button className="btn btn-secondary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }} onClick={onOpenQRCode} title="Scan QR Code for Mobile Bug Reporting">
             <QrCode size={16} color="#10b981" />
@@ -35,7 +66,7 @@ export const Navbar = ({ theme, onToggleTheme, onOpenQRCode, onOpenWeeklyReport,
             Weekly AI Report
           </button>
 
-          {/* Theme Switcher Button Label (Light Mode / Dark Mode) */}
+          {/* Theme Switcher Button */}
           <button
             className="btn btn-secondary"
             onClick={onToggleTheme}

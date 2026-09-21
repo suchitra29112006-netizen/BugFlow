@@ -1,15 +1,54 @@
 import React from 'react';
 import { FileText, Download, X, CheckCircle2, AlertTriangle, Clock, TrendingUp, Sparkles, Trophy } from 'lucide-react';
 
-export const AIWeeklyReportModal = ({ isOpen, onClose, stats }) => {
-  if (!isOpen) return null;
+export const AIWeeklyReportModal = ({ isOpen = true, onClose, stats }) => {
+  if (isOpen === false) return null;
 
   const handleDownloadPDF = () => {
-    window.print();
+    const reportElem = document.getElementById('printable-weekly-report');
+    if (!reportElem) {
+      window.print();
+      return;
+    }
+
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>BugFlow_Weekly_Executive_AI_Report_${new Date().toISOString().slice(0,10)}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #0f172a; background: #ffffff; }
+            h2 { color: #10b981; margin-bottom: 4px; font-size: 24px; }
+            .header-bar { border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+            .report-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+            .metric-box { background: #ffffff; border: 1px solid #cbd5e1; padding: 15px; border-radius: 10px; text-align: center; }
+            .metric-val { font-size: 28px; font-weight: 900; margin: 6px 0; }
+            .badge-green { color: #10b981; font-weight: 700; }
+            .badge-red { color: #ef4444; font-weight: 700; }
+            .badge-orange { color: #f97316; font-weight: 700; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header-bar">
+            <h2>🚀 BugFlow — AI Weekly Executive Summary Report</h2>
+            <p style="color: #64748b; font-size: 13px; margin: 0;">Generated on: ${new Date().toLocaleDateString()} | Leadership Digest</p>
+          </div>
+          ${reportElem.innerHTML}
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+    }, 400);
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" style={{ zIndex: 1100 }}>
       <div className="modal-card" style={{ maxWidth: '680px' }}>
         
         {/* Modal Header */}

@@ -1,15 +1,15 @@
 import React from 'react';
 import { QrCode, X, Smartphone, Check } from 'lucide-react';
 
-export const QRCodeModal = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
+export const QRCodeModal = ({ isOpen = true, onClose }) => {
+  if (isOpen === false) return null;
 
   // Use a reliable QR Code generator image URL for instant scanning
   const currentUrl = window.location.origin + '/#mobile-report';
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}&color=10b981&bgcolor=ffffff`;
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" style={{ zIndex: 1100 }}>
       <div className="modal-card" style={{ maxWidth: '420px', textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -1,0 +1,31 @@
+name: BugFlow Defect-Driven CI Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release Version (e.g. v1.4.0)'
+        required: true
+        default: 'v1.4.0'
+
+jobs:
+  defect-verification:
+    name: Verify Resolved Defects in CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Call BugFlow Batch Verification Endpoint
+        run: |
+          curl -X POST "${{ secrets.BUGFLOW_API_URL }}/api/issues/defects/verify-batch" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.BUGFLOW_API_TOKEN }}" \
+            -d '{
+              "release": "${{ github.event.inputs.release_version }}",
+              "defects": [
+                { "id": "DEF-101", "status": "passed" },
+                { "id": "DEF-102", "status": "failed" }
+              ]
+            }'

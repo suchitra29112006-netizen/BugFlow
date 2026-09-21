@@ -33,7 +33,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    return await api.register(userData);
+    await api.register(userData);
+    return await login(userData.email, userData.password);
   };
 
   const logout = () => {

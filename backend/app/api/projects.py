@@ -6,6 +6,18 @@ from app.database.connection import get_db
 from app.models.project import Project
 from app.models.issue import Issue
 from app.models.user import User, UserRole
+from app.models.milestone import Milestone
+from app.models.document import Document
+from app.models.sprint import SprintIssue
+from app.models.time_entry import TimeEntry, ActiveTimer
+from app.models.sla import SLAEvent
+from app.models.assignment_feedback import AssignmentFeedback
+from app.models.milestone4_models import (
+    DefectFingerprint,
+    DefectRelationship,
+    InvestigationWorkspace,
+    VerificationPlan
+)
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.auth.deps import get_current_user, require_roles
 
@@ -91,6 +103,32 @@ def delete_project(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
     
+    # 1. Fetch all issues belonging to this project
+    issues = db.query(Issue).filter(Issue.project_id == project_id).all()
+    issue_ids = [i.id for i in issues]
+
+    if issue_ids:
+        # Delete dependent M4 & M3 records linked to these issue_ids
+        db.query(DefectFingerprint).filter(DefectFingerprint.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(InvestigationWorkspace).filter(InvestigationWorkspace.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(VerificationPlan).filter(VerificationPlan.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(DefectRelationship).filter(
+            (DefectRelationship.source_issue_id.in_(issue_ids)) | (DefectRelationship.target_issue_id.in_(issue_ids))
+        ).delete(synchronize_session=False)
+        db.query(SprintIssue).filter(SprintIssue.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(TimeEntry).filter(TimeEntry.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(ActiveTimer).filter(ActiveTimer.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(SLAEvent).filter(SLAEvent.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+        db.query(AssignmentFeedback).filter(AssignmentFeedback.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+
+        for issue in issues:
+            db.delete(issue)
+
+    # 2. Clean up project-level child tables
+    db.query(Milestone).filter(Milestone.project_id == project_id).delete(synchronize_session=False)
+    db.query(Document).filter(Document.project_id == project_id).delete(synchronize_session=False)
+
     db.delete(project)
     db.commit()
     return None
+

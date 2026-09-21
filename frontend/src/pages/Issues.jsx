@@ -1,43 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Bug, Search, Plus, Sparkles, FolderKanban, AlertTriangle, Paperclip, Check, Loader2, Wand2, Globe2, Link2, Mic, MicOff, Kanban, List } from 'lucide-react';
+import { Bug, Search, Plus, Sparkles, FolderKanban, AlertTriangle, Check, Loader2, Wand2, Globe2, Link2, Mic, MicOff, Kanban, List, Tag, Calendar, AlertCircle, Layers, CheckSquare, Square, Zap, HelpCircle } from 'lucide-react';
+import { MarkdownEditor } from '../components/MarkdownEditor';
+import { DragDropUpload } from '../components/DragDropUpload';
+import { ExplainWhyModal } from '../components/ExplainWhyModal';
+import { AIBugGeneratorModal } from '../components/AIBugGeneratorModal';
+import { ReportIssueModal } from '../components/ReportIssueModal';
 
 
 const KANBAN_COLUMNS = ['Reported', 'Open', 'In Progress', 'In Review', 'Resolved', 'Closed'];
 
-export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
+export const Issues = ({ projects, selectedProjectId, selectedSprintId, onSelectIssue }) => {
   const [issues, setIssues] = useState([]);
+  const [labels, setLabels] = useState([]);
+  const [sprints, setSprints] = useState([]);
+  const [smartTriageQueue, setSmartTriageQueue] = useState([]);
+  const [loadingTriage, setLoadingTriage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [projectIdFilter, setProjectIdFilter] = useState(selectedProjectId || '');
+  const [sprintIdFilter, setSprintIdFilter] = useState(selectedSprintId || '');
+  const [labelIdFilter, setLabelIdFilter] = useState('');
 
-  // View Mode: 'list' | 'kanban'
+  // View Mode: 'kanban' | 'list' | 'triage'
   const [viewMode, setViewMode] = useState('kanban');
+
+  // Explain Why Modal state
+  const [explainModal, setExplainModal] = useState({ isOpen: false, targetId: null, type: 'triage' });
+
+  // Bulk Actions State
+  const [selectedIssueIds, setSelectedIssueIds] = useState([]);
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkSprint, setBulkSprint] = useState('');
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   // Report Issue Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [title, setTitle] = useState('');
+
   const [description, setDescription] = useState('');
   const [targetProject, setTargetProject] = useState(projects[0]?.id || '');
+  const [targetSprint, setTargetSprint] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [prUrl, setPrUrl] = useState('');
   const [users, setUsers] = useState([]);
   const [assignedTo, setAssignedTo] = useState('');
   const [severity, setSeverity] = useState('Medium');
   const [priority, setPriority] = useState('Medium');
+  const [selectedLabelIds, setSelectedLabelIds] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [createError, setCreateError] = useState('');
 
   // Voice Recognition State
   const [isListening, setIsListening] = useState(false);
-  const [voiceSupported, setVoiceSupported] = useState(true);
 
   // AI Feature States inside Modal
-  const [aiPrediction, setAiPrediction] = useState(null); // { severity, confidence, reasoning }
-  const [predicting, setPredicting] = useState(false);
-  const [duplicateWarning, setDuplicateWarning] = useState(null); // { has_duplicate, duplicates }
+  const [aiPrediction, setAiPrediction] = useState(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [liveSuggestions, setLiveSuggestions] = useState([]);
   const [generatingDetail, setGeneratingDetail] = useState(false);
-  const [attachedToExisting, setAttachedToExisting] = useState(false);
+  const [autoTagging, setAutoTagging] = useState(false);
 
   const fetchIssues = async () => {
     setLoading(true);
@@ -46,7 +71,9 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
         search: search.trim() || undefined,
         status: statusFilter || undefined,
         severity: severityFilter || undefined,
-        project_id: projectIdFilter ? parseInt(projectIdFilter) : undefined
+        project_id: projectIdFilter ? parseInt(projectIdFilter) : undefined,
+        sprint_id: sprintIdFilter ? parseInt(sprintIdFilter) : undefined,
+        label_id: labelIdFilter ? parseInt(labelIdFilter) : undefined,
       });
       setIssues(data);
     } catch (err) {
@@ -56,33 +83,48 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
     }
   };
 
-  useEffect(() => {
-    fetchIssues();
-  }, [search, statusFilter, severityFilter, projectIdFilter]);
+  const fetchSmartTriage = async () => {
+    setLoadingTriage(true);
+    try {
+      const data = await api.getSmartTriageQueue(projectIdFilter ? parseInt(projectIdFilter) : undefined);
+      setSmartTriageQueue(data.triage_queue || []);
+    } catch (err) {
+      console.error("Failed to fetch smart triage:", err);
+    } finally {
+      setLoadingTriage(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    if (viewMode === 'triage') {
+      fetchSmartTriage();
+    } else {
+      fetchIssues();
+    }
+  }, [search, statusFilter, severityFilter, projectIdFilter, sprintIdFilter, labelIdFilter, viewMode]);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
       try {
-        const u = await api.getUsers();
+        const [u, l, s] = await Promise.all([
+          api.getUsers(),
+          api.getLabels(),
+          api.getSprints()
+        ]);
         setUsers(u);
+        setLabels(l);
+        setSprints(s);
       } catch (err) {
         console.error(err);
       }
     };
-    fetchUsers();
+    fetchMetadata();
   }, []);
 
-  // Voice Bug Reporting 🎙 (Web Speech API)
   const toggleVoiceRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Web Speech Recognition API is not supported in this browser. Try Google Chrome or Microsoft Edge.");
-      setVoiceSupported(false);
-      return;
-    }
-
-    if (isListening) {
-      setIsListening(false);
+      alert("Browser Speech Recognition API is not supported.");
       return;
     }
 
@@ -92,104 +134,32 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
       recognition.interimResults = false;
       recognition.lang = 'en-US';
 
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
+      setIsListening(true);
+      recognition.start();
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setTitle(transcript);
-          setDescription(`Voice Bug Report Transcript: "${transcript}"`);
-        }
+        setDescription(prev => prev ? `${prev} ${transcript}` : transcript);
         setIsListening(false);
       };
 
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
+      recognition.onerror = () => setIsListening(false);
+      recognition.onend = () => setIsListening(false);
     } catch (err) {
-      console.error("Failed to start speech recognition:", err);
+      console.error(err);
       setIsListening(false);
     }
   };
 
-  // Debounced AI Predict Severity & Duplicate Detection as user types
-  useEffect(() => {
-    if (!isModalOpen || (!title.trim() && !description.trim())) {
-      setAiPrediction(null);
-      setDuplicateWarning(null);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      // 1. Predict Severity
-      try {
-        setPredicting(true);
-        const pred = await api.predictAISeverity(title, description);
-        setAiPrediction(pred);
-        setSeverity(pred.severity);
-      } catch (err) {
-        console.error("Severity prediction failed:", err);
-      } finally {
-        setPredicting(false);
-      }
-
-      // 2. Check Duplicates
-      try {
-        const dup = await api.checkDuplicates(title, description, targetProject ? parseInt(targetProject) : null);
-        if (dup.has_duplicate) {
-          setDuplicateWarning(dup.duplicates[0]);
-        } else {
-          setDuplicateWarning(null);
-        }
-      } catch (err) {
-        console.error("Duplicate check failed:", err);
-      }
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [title, description, targetProject, isModalOpen]);
-
-  const handleAIGenerateDetail = async () => {
-    const promptText = title || description;
-    if (!promptText.trim()) return;
-
-    setGeneratingDetail(true);
+  const handlePredictSeverity = async () => {
+    if (!title.trim()) return;
     try {
-      const projName = projects.find(p => p.id === parseInt(targetProject))?.name;
-      const res = await api.generateAIBugReport(promptText, projName);
-      if (!title || title === promptText) setTitle(res.title);
-      
-      const expandedDesc = `${res.description}\n\n**Expected Behavior:**\n${res.expected_behavior}\n\n**Actual Behavior:**\n${res.actual_behavior}\n\n**Steps to Reproduce:**\n${res.steps_to_reproduce}\n\n**Environment:**\n${res.environment}`;
-      setDescription(expandedDesc);
+      const res = await api.predictAISeverity(title, description);
+      setAiPrediction(res);
+      if (res.predicted_severity) setSeverity(res.predicted_severity);
+      if (res.predicted_priority) setPriority(res.predicted_priority);
     } catch (err) {
-      alert("AI Assistant failed: " + err.message);
-    } finally {
-      setGeneratingDetail(false);
-    }
-  };
-
-  const handleAttachToExistingIssue = async (existingIssueId) => {
-    try {
-      await api.addComment(existingIssueId, `[Duplicate Report Linked]: "${title} - ${description}"`);
-      setAttachedToExisting(true);
-      setTimeout(() => {
-        setIsModalOpen(false);
-        setAttachedToExisting(false);
-        setTitle('');
-        setDescription('');
-        onSelectIssue(existingIssueId);
-      }, 1200);
-    } catch (err) {
-      alert("Failed to attach to existing issue: " + err.message);
+      console.error(err);
     }
   };
 
@@ -199,31 +169,73 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
 
     setCreateError('');
     try {
+      const projId = parseInt(targetProject || projects[0]?.id || 1);
       const created = await api.createIssue({
         title,
         description,
         severity,
         priority,
-        project_id: parseInt(targetProject),
-        assigned_to: assignedTo ? parseInt(assignedTo) : null
+        project_id: projId,
+        sprint_id: targetSprint ? parseInt(targetSprint) : null,
+
+        due_date: dueDate ? new Date(dueDate).toISOString() : null,
+        pr_url: prUrl.trim() || null,
+        assigned_to: assignedTo ? parseInt(assignedTo) : null,
+        label_ids: selectedLabelIds
       });
 
       if (selectedFile && created?.id) {
         try {
           await api.uploadAttachment(created.id, selectedFile);
         } catch (uploadErr) {
-          console.error("File attachment upload failed:", uploadErr);
+          console.error(uploadErr);
         }
       }
 
       setTitle('');
       setDescription('');
       setSelectedFile(null);
+      setSelectedLabelIds([]);
+      setDueDate('');
+      setPrUrl('');
       setIsModalOpen(false);
       fetchIssues();
     } catch (err) {
       setCreateError(err.message || 'Failed to report issue.');
     }
+  };
+
+  const toggleSelectIssue = (id, e) => {
+    e.stopPropagation();
+    setSelectedIssueIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedIssueIds.length === 0) return;
+    setBulkUpdating(true);
+    try {
+      await api.bulkUpdateIssues({
+        issue_ids: selectedIssueIds,
+        status: bulkStatus || undefined,
+        sprint_id: bulkSprint ? parseInt(bulkSprint) : undefined
+      });
+      setSelectedIssueIds([]);
+      setBulkStatus('');
+      setBulkSprint('');
+      fetchIssues();
+    } catch (err) {
+      alert("Bulk update failed: " + err.message);
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const toggleLabelSelection = (labelId) => {
+    setSelectedLabelIds(prev => 
+      prev.includes(labelId) ? prev.filter(id => id !== labelId) : [...prev, labelId]
+    );
   };
 
   return (
@@ -233,11 +245,10 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Issues & Defect Management</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Interactive Kanban board and AI-assisted defect triage.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Interactive Kanban board, Smart Triage Queue, and AI assistance.</p>
         </div>
         
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {/* List vs Kanban Toggle */}
           <div style={{ display: 'flex', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', padding: '3px', border: '1px solid var(--border-color)' }}>
             <button
               className="btn"
@@ -245,7 +256,6 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
               onClick={() => setViewMode('kanban')}
             >
               <Kanban size={14} /> Kanban
-
             </button>
             <button
               className="btn"
@@ -254,86 +264,201 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
             >
               <List size={14} /> List
             </button>
+            <button
+              className="btn"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: viewMode === 'triage' ? 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)' : 'transparent', color: viewMode === 'triage' ? '#fff' : 'var(--text-muted)', fontWeight: 700 }}
+              onClick={() => setViewMode('triage')}
+            >
+              <Zap size={14} /> Smart Triage Queue
+            </button>
           </div>
 
-          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-            <Plus size={16} />
-            Report Issue
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-secondary" style={{ color: '#a855f7' }} onClick={() => setIsAiGeneratorOpen(true)}>
+              <Sparkles size={16} /> AI Bug Generator
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} />
+              Report Issue
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="glass-panel" style={{ padding: '1rem 1.25rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-        <div style={{ flex: '1 1 240px', position: 'relative' }}>
+      {/* Bulk Action Bar */}
+      {selectedIssueIds.length > 0 && (
+        <div className="glass-panel" style={{ padding: '0.85rem 1.25rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981' }}>
+            <Layers size={16} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            {selectedIssueIds.length} Issues Selected for Bulk Action
+          </span>
+
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <select className="form-select" style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }} value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
+              <option value="">Set Status...</option>
+              {KANBAN_COLUMNS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            <select className="form-select" style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }} value={bulkSprint} onChange={(e) => setBulkSprint(e.target.value)}>
+              <option value="">Set Sprint...</option>
+              {sprints.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+
+            <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }} onClick={handleBulkUpdate} disabled={bulkUpdating}>
+              {bulkUpdating ? 'Updating...' : 'Apply Bulk Update'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Toolbar */}
+      <div className="glass-panel" style={{ padding: '1rem 1.25rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
           <input
             type="text"
             className="form-input"
-            style={{ paddingLeft: '2.4rem' }}
-            placeholder="Search by title or description..."
+            style={{ paddingLeft: '2.25rem', fontSize: '0.85rem' }}
+            placeholder="Search title, description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Search size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={15} color="var(--text-dim)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
         </div>
 
-        <div style={{ minWidth: '160px' }}>
-          <select className="form-select" value={projectIdFilter} onChange={(e) => setProjectIdFilter(e.target.value)}>
-            <option value="">All Projects</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
+        <select className="form-select" style={{ width: '160px', fontSize: '0.85rem' }} value={projectIdFilter} onChange={(e) => setProjectIdFilter(e.target.value)}>
+          <option value="">All Projects</option>
+          {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
 
-        <div style={{ minWidth: '140px' }}>
-          <select className="form-select" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
-            <option value="">All Severities</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-        </div>
+        <select className="form-select" style={{ width: '150px', fontSize: '0.85rem' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">All Statuses</option>
+          {KANBAN_COLUMNS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <select className="form-select" style={{ width: '150px', fontSize: '0.85rem' }} value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
+          <option value="">All Severities</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+
+        <select className="form-select" style={{ width: '150px', fontSize: '0.85rem' }} value={labelIdFilter} onChange={(e) => setLabelIdFilter(e.target.value)}>
+          <option value="">All Labels</option>
+          {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
       </div>
 
-      {/* Issues View (Kanban Board vs List View) */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading defects...</div>
-      ) : issues.length === 0 ? (
-        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-          <Bug size={48} color="var(--text-dim)" style={{ marginBottom: '1rem' }} />
-          <h3>No Issues Found</h3>
-          <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.5rem 0' }}>Try adjusting your search criteria or report a new defect.</p>
+      {/* View Mode: Smart Triage Queue */}
+      {viewMode === 'triage' ? (
+        <div className="glass-panel" style={{ padding: '1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f97316', fontWeight: 900, fontSize: '1.15rem' }}>
+                <Zap size={22} />
+                Phase 2: Smart Triage Queue (Impact Score 0–100)
+              </div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Sorted by deterministic Impact Score combining Severity, Priority, SLA remaining, Age, Reopens, and Similar Defects.
+              </span>
+            </div>
+          </div>
+
+          {loadingTriage ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Calculating Smart Triage Impact Scores...</div>
+          ) : smartTriageQueue.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No open defects in Smart Triage queue.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {smartTriageQueue.map((item, idx) => (
+                <div
+                  key={item.issue.id}
+                  className="glass-panel"
+                  style={{
+                    padding: '1.25rem',
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    background: idx === 0 ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(249, 115, 22, 0.08) 100%)' : 'rgba(0,0,0,0.02)',
+                    border: idx === 0 ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-color)',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => onSelectIssue(item.issue.id)}
+                >
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: idx === 0 ? '#ef4444' : '#f97316', width: '40px', textAlign: 'center' }}>
+                      #{idx + 1}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>DEF-{item.issue.id}: {item.issue.title}</span>
+                        <span className={`badge badge-${item.issue.severity.toLowerCase()}`}>{item.issue.severity}</span>
+                        <span className={`badge badge-${item.issue.status.toLowerCase().replace(' ', '-')}`}>{item.issue.status}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+                        {item.rank_reasons.map((r, rIdx) => (
+                          <span key={rIdx} style={{ fontSize: '0.72rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                            • {r}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <span className="badge badge-low" style={{ background: item.impact_score > 75 ? '#ef4444' : (item.impact_score > 50 ? '#f97316' : '#10b981'), color: '#fff', fontSize: '0.88rem', fontWeight: 900 }}>
+                      ⚡ Impact Score: {item.impact_score}/100 ({item.risk_level})
+                    </span>
+
+                    <button
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExplainModal({ isOpen: true, targetId: item.issue.id, type: 'triage' });
+                      }}
+                    >
+                      <HelpCircle size={12} color="#10b981" /> {idx === 0 ? 'Why is this ranked #1?' : 'Explain Why'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : viewMode === 'kanban' ? (
-        
-        /* Interactive Kanban Board View */
+        /* View Mode: Kanban Board */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(220px, 1fr))', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
-          {KANBAN_COLUMNS.map((colStatus) => {
-            const colIssues = issues.filter(i => i.status === colStatus);
+          {KANBAN_COLUMNS.map(col => {
+            const colIssues = issues.filter(i => i.status === col);
             return (
-              <div key={colStatus} className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', minHeight: '500px', background: 'rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-                  <span className={`badge badge-${colStatus.toLowerCase().replace(' ', '-')}`}>{colStatus}</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>{colIssues.length}</span>
+              <div key={col} className="glass-panel" style={{ padding: '1rem', background: 'rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', minHeight: '550px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{col}</span>
+                  <span className="badge badge-assigned" style={{ fontSize: '0.7rem' }}>{colIssues.length}</span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
-                  {colIssues.map((iss) => (
+                  {colIssues.map(iss => (
                     <div
                       key={iss.id}
-                      style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' }}
+                      className="glass-panel"
+                      style={{ padding: '0.85rem', cursor: 'pointer', background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}
                       onClick={() => onSelectIssue(iss.id)}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                         <span className={`badge badge-${iss.severity.toLowerCase()}`} style={{ fontSize: '0.65rem' }}>{iss.severity}</span>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>#{iss.id}</span>
+                        <input type="checkbox" checked={selectedIssueIds.includes(iss.id)} onChange={(e) => toggleSelectIssue(iss.id, e)} />
                       </div>
-                      <h4 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: '0.5rem', lineHeight: 1.3 }}>{iss.title}</h4>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{iss.project?.name}</span>
+
+                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.35, marginBottom: '0.4rem' }}>#{iss.id} {iss.title}</h4>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                         <span>{iss.assignee?.name || 'Unassigned'}</span>
+                        {iss.is_regression && <span style={{ color: '#ef4444', fontWeight: 800 }}>⚠️ Reopened</span>}
                       </div>
                     </div>
                   ))}
@@ -343,227 +468,60 @@ export const Issues = ({ projects, selectedProjectId, onSelectIssue }) => {
           })}
         </div>
       ) : (
-        /* Standard List View */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {issues.map((iss) => (
-            <div
-              key={iss.id}
-              className="glass-panel"
-              style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer' }}
-              onClick={() => onSelectIssue(iss.id)}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        /* View Mode: List View */
+        <div className="glass-panel" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {issues.map(iss => (
+              <div
+                key={iss.id}
+                style={{ padding: '0.85rem 1rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => onSelectIssue(iss.id)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                  <input type="checkbox" checked={selectedIssueIds.includes(iss.id)} onChange={(e) => toggleSelectIssue(iss.id, e)} />
+                  <div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>#{iss.id} {iss.title}</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block' }}>Project: {iss.project?.name} • Reporter: {iss.reporter?.name}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                   <span className={`badge badge-${iss.severity.toLowerCase()}`}>{iss.severity}</span>
                   <span className={`badge badge-${iss.status.toLowerCase().replace(' ', '-')}`}>{iss.status}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <FolderKanban size={12} />
-                    {iss.project?.name}
-                  </span>
-                </div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{iss.title}</h4>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                    {iss.assignee ? iss.assignee.name : 'Unassigned'}
-                  </span>
-                  <span>Reported by {iss.reporter?.name}</span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Report Issue Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Report New Software Issue</h3>
-                
-                {/* Voice Bug Reporting 🎙 Button */}
-                <button
-                  type="button"
-                  className={`btn ${isListening ? 'btn-danger' : 'btn-peach'}`}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                  onClick={toggleVoiceRecording}
-                  title="Voice Bug Reporting 🎙 (Speak to report bug)"
-                >
-                  {isListening ? <MicOff size={14} className="animate-pulse" /> : <Mic size={14} />}
-                  {isListening ? '🎙 Listening... Speak Now' : '🎙 Voice Bug Report'}
-                </button>
-              </div>
-              <button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => setIsModalOpen(false)}>✕</button>
-            </div>
-            
-            {createError && (
-              <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                {createError}
-              </div>
-            )}
-
-            {/* Enhanced AI Duplicate Bug Detection Card */}
-            {duplicateWarning && (
-              <div style={{ background: 'rgba(249, 115, 22, 0.12)', border: '1px solid rgba(249, 115, 22, 0.4)', padding: '1rem 1.25rem', borderRadius: '12px', marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#f97316', fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.5rem' }}>
-                  <AlertTriangle size={20} />
-                  A similar issue already exists!
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.04)', padding: '0.6rem 0.85rem', borderRadius: '8px', marginBottom: '0.75rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>EXISTING ISSUE:</span>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                      #{duplicateWarning.issue_id} {duplicateWarning.title}
-                    </div>
-                  </div>
-                  <span className="badge badge-high" style={{ fontSize: '0.75rem' }}>
-                    Similarity: {duplicateWarning.similarity}%
-                  </span>
-                </div>
-
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  <strong>Recommendation:</strong> Do you want to attach your report to this existing issue instead?
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-peach"
-                  style={{ width: '100%', justifyContent: 'center', padding: '0.55rem', fontSize: '0.85rem' }}
-                  onClick={() => handleAttachToExistingIssue(duplicateWarning.issue_id)}
-                  disabled={attachedToExisting}
-                >
-                  {attachedToExisting ? <Check size={16} /> : <Link2 size={16} />}
-                  {attachedToExisting ? 'Attached to Issue #' + duplicateWarning.issue_id : 'Attach My Report to Issue #' + duplicateWarning.issue_id}
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateIssue}>
-              <div className="form-group">
-                <label>Target Project</label>
-                <select className="form-select" value={targetProject} onChange={(e) => setTargetProject(e.target.value)} required>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Issue Title</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Login button crashes app / speak via microphone 🎙"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Globe2 size={14} color="#10b981" />
-                    Multi-Language Description (Kannada, Hindi, English, etc.)
-                  </label>
-                  <button
-                    type="button"
-                    className="btn btn-peach"
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                    onClick={handleAIGenerateDetail}
-                    disabled={generatingDetail || (!title.trim() && !description.trim())}
-                  >
-                    {generatingDetail ? <Loader2 className="animate-spin" size={14} /> : <Wand2 size={14} />}
-                    {generatingDetail ? 'AI Translating...' : '🌐 AI Auto-Translate & Expand'}
-                  </button>
-                </div>
-                <textarea
-                  className="form-textarea"
-                  rows={4}
-                  placeholder="Describe bug or click 🎙 Voice Bug Report..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* AI Severity Prediction Card */}
-              {aiPrediction && (
-                <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Sparkles size={14} />
-                      AI Severity Predictor
-                    </span>
-                    <span className="badge badge-low" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                      Confidence: {aiPrediction.confidence}%
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                    Predicted Severity: <span className={`badge badge-${aiPrediction.severity.toLowerCase()}`}>{aiPrediction.severity}</span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <strong>Reason:</strong> {aiPrediction.reasoning}
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Severity</label>
-                  <select className="form-select" value={severity} onChange={(e) => setSeverity(e.target.value)}>
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Priority</label>
-                  <select className="form-select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Assign To (Optional)</label>
-                  <select className="form-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-                    <option value="">Unassigned</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginTop: '0.5rem' }}>
-                <label>Attach File (Screenshot, Video, Crash/Console Log, PDF)</label>
-                <input
-                  type="file"
-                  className="form-input"
-                  onChange={(e) => setSelectedFile(e.target.files[0] || null)}
-                  accept="image/*,video/*,.log,.txt,.pdf"
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Issue</button>
-              </div>
-            </form>
+            ))}
           </div>
         </div>
       )}
 
+      {/* Global Explain Why Modal */}
+      <ExplainWhyModal
+        isOpen={explainModal.isOpen}
+        onClose={() => setExplainModal({ ...explainModal, isOpen: false })}
+        targetId={explainModal.targetId}
+        recommendationType={explainModal.type}
+      />
+
+      {/* AI Bug Generator Modal */}
+      <AIBugGeneratorModal
+        isOpen={isAiGeneratorOpen}
+        onClose={() => setIsAiGeneratorOpen(false)}
+        projects={projects}
+        onIssueCreated={fetchIssues}
+      />
+
+      {/* Standard Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        projects={projects}
+        sprints={sprints}
+        users={users}
+        onIssueCreated={fetchIssues}
+      />
+
     </div>
   );
+
 };
