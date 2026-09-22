@@ -1,10 +1,14 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://bugflow.onrender.com/api/:path*"
+      "destination": "https://bugflow-backend.onrender.com/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
