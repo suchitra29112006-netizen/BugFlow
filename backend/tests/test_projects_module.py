@@ -45,7 +45,7 @@ def auth_headers():
         db.add(org)
         db.commit()
 
-    user = db.query(User).first()
+    user = db.query(User).filter(User.email == "projectadmin@bugflow.io").first()
     if not user:
         user = User(
             name="Sarah Jenkins",

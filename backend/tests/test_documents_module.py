@@ -45,7 +45,7 @@ def auth_headers():
         db.add(org)
         db.commit()
 
-    user = db.query(User).first()
+    user = db.query(User).filter(User.email == "docadmin@bugflow.io").first()
     if not user:
         user = User(
             name="Doc Admin User",
@@ -57,17 +57,7 @@ def auth_headers():
         db.commit()
         db.refresh(user)
 
-    proj = db.query(Project).first()
-    if not proj:
-        proj = Project(name="BugFlow Core Platform", owner_id=user.id)
-        db.add(proj)
-        db.commit()
-
-    token = create_access_token({
-        "sub": str(user.id),
-        "id": user.id,
-        "role": str(user.role.value) if hasattr(user.role, 'value') else str(user.role)
-    })
+    token = create_access_token({"sub": str(user.id), "id": user.id, "role": str(user.role.value) if hasattr(user.role, 'value') else str(user.role)})
     db.close()
     return {"Authorization": f"Bearer {token}"}
 

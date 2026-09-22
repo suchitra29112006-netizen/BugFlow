@@ -2,12 +2,29 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# SQLite for fast setup, easily configurable to PostgreSQL via DATABASE_URL
+# Environment-based Database URL with SQLite default for local development
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bugflow.db")
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# Normalize PostgreSQL schemes for production compatibility (e.g. postgres:// -> postgresql+psycopg://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+psycopg://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+# Configure connection engine based on database driver
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+    engine = create_engine(DATABASE_URL, connect_args=connect_args)
+else:
+    connect_args = {}
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20
+    )
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

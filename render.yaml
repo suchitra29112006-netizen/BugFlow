@@ -1,7 +1,7 @@
 services:
-  # BugFlow Unified Full-Stack Application (React UI + FastAPI Backend in 1 Service)
+  # 1. BugFlow FastAPI Backend Web Service
   - type: web
-    name: bugflow
+    name: bugflow-backend
     runtime: python
     plan: free
     buildCommand: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt
@@ -9,3 +9,18 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: ENVIRONMENT
+        value: production
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bugflow-postgres
+          property: connectionString
+
+databases:
+  # 2. Render Managed PostgreSQL Database (Free Tier)
+  - name: bugflow-postgres
+    plan: free
+    databaseName: bugflow
+    user: bugflow_user

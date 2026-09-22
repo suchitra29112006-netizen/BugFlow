@@ -1,11 +1,11 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.database.connection import engine, Base, SessionLocal
+from app.database.connection import engine, Base, SessionLocal, get_db
 from app.models import (
     User, UserRole, Project, Issue, IssueSeverity, IssueStatus, IssuePriority, Comment, Label,
     Milestone, TimeEntry, ActiveTimer, SLAPolicy, SLAEvent, AutomationRule, Document,
@@ -287,13 +287,42 @@ app = FastAPI(
 )
 
 # CORS Middleware
+raw_cors = os.getenv("CORS_ORIGINS", "")
+if raw_cors.strip():
+    allowed_origins = [o.strip() for o in raw_cors.split(",") if o.strip()]
+else:
+    allowed_origins = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if allowed_origins != ["*"] else ["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app" if allowed_origins != ["*"] else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health Check Endpoint
+@app.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    db_status = "connected"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
+    return {
+        "status": "ok",
+        "app": "BugFlow API",
+        "version": "4.0.0",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "database": db_status
+    }
 
 # Mount static uploads directory for screenshots, videos, documents, and crash logs
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
@@ -347,6 +376,10 @@ app.include_router(departments.router)
 @app.on_event("startup")
 def seed_initial_data():
     """Seed initial demo users, project, skills catalog, milestones, and user intelligence if DB is fresh."""
+    seed_enabled = os.getenv("SEED_DEMO_DATA", "true").lower() in ["true", "1", "yes"]
+    if not seed_enabled:
+        return
+
     db: Session = SessionLocal()
     try:
         label_count = db.query(Label).count()
