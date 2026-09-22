@@ -11,16 +11,38 @@ const API_BASE_URL = getApiBaseUrl();
 const getDemoFallbackForEndpoint = (endpoint) => {
   const ep = (endpoint || '').toLowerCase();
 
-  // Dashboard & Statistics
+  // Dashboard Statistics
   if (ep.includes('/dashboard/statistics')) {
     return {
       total_projects: 4,
       total_issues: 18,
-      open_issues: 5,
-      resolved_issues: 13,
-      critical_issues: 1,
-      team_velocity: 88,
-      code_coverage: "94%",
+      open_bugs: 5,
+      resolved_bugs: 13,
+      critical_bugs: 1,
+      total_users: 6,
+      my_reported_count: 2,
+      my_assigned_count: 3,
+      testing_bugs_count: 1,
+      severity_distribution: { Critical: 1, High: 4, Medium: 8, Low: 5 }
+    };
+  }
+
+  // Workload Heatmap
+  if (ep.includes('heatmap') || ep.includes('workload')) {
+    return [
+      { developer_id: 1, developer_name: "George Dev", role: "Lead Dev", active_assigned_bugs: 3, resolved_bugs: 12, workload_level: "Medium" },
+      { developer_id: 2, developer_name: "Sarah Jenkins", role: "Backend Eng", active_assigned_bugs: 5, resolved_bugs: 20, workload_level: "High" },
+      { developer_id: 3, developer_name: "Alex Rivera", role: "QA Lead", active_assigned_bugs: 1, resolved_bugs: 8, workload_level: "Low" }
+    ];
+  }
+
+  // Gamification Badges
+  if (ep.includes('gamification')) {
+    return {
+      badges: [
+        { name: "Bug Hunter", description: "Resolved 10+ defects" },
+        { name: "Deploy Master", description: "Zero downtime deployment" }
+      ]
     };
   }
 
@@ -92,51 +114,8 @@ const getDemoFallbackForEndpoint = (endpoint) => {
     ];
   }
 
-  // Sprints
-  if (ep.includes('/sprints')) {
-    return [
-      { id: 1, name: "Sprint 24 - Production Release", status: "Active", start_date: "2026-09-15", end_date: "2026-09-29" }
-    ];
-  }
-
-  // Milestones
-  if (ep.includes('/milestones')) {
-    return [
-      { id: 1, title: "v4.0 Production Launch", due_date: "2026-09-30", status: "In Progress" }
-    ];
-  }
-
-  // Documents
-  if (ep.includes('/documents')) {
-    return [
-      { id: 1, title: "Architecture & Deployment Specification", category: "Architecture", status: "Approved" }
-    ];
-  }
-
-  // Workspaces, Departments, Goals, Labels, SLA, Automation, Incidents, Activity, Findings, Anomalies
-  if (
-    ep.includes('/workspaces') ||
-    ep.includes('/departments') ||
-    ep.includes('/goals') ||
-    ep.includes('/labels') ||
-    ep.includes('/sla') ||
-    ep.includes('/automation') ||
-    ep.includes('/incidents') ||
-    ep.includes('/activity') ||
-    ep.includes('/findings') ||
-    ep.includes('/anomalies') ||
-    ep.includes('/queries') ||
-    ep.includes('/squads')
-  ) {
-    return [];
-  }
-
-  // Default array vs object check based on plural endpoints
-  if (ep.endsWith('s') || ep.includes('/list') || ep.includes('/all')) {
-    return [];
-  }
-
-  return {};
+  // Default to empty array [] so any .map() or .filter() call in UI works safely!
+  return [];
 };
 
 async function request(endpoint, options = {}) {

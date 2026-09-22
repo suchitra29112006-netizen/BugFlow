@@ -30,7 +30,7 @@ export const WorkloadHeatmap = () => {
       </h3>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {heatmap.map((dev) => {
+        {(Array.isArray(heatmap) ? heatmap : []).map((dev) => {
           const isHigh = dev.workload_level === 'High';
           return (
             <div
