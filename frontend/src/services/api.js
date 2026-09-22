@@ -1,14 +1,4 @@
-const getApiBaseUrl = () => {
-  if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  if (typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('onrender.com'))) {
-    return 'https://bugflow.onrender.com/api';
-  }
-  return '/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = '/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('bugflow_token');
