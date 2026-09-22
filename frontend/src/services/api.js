@@ -8,6 +8,137 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+const getDemoFallbackForEndpoint = (endpoint) => {
+  const ep = (endpoint || '').toLowerCase();
+
+  // Dashboard & Statistics
+  if (ep.includes('/dashboard/statistics')) {
+    return {
+      total_projects: 4,
+      total_issues: 18,
+      open_issues: 5,
+      resolved_issues: 13,
+      critical_issues: 1,
+      team_velocity: 88,
+      code_coverage: "94%",
+    };
+  }
+
+  if (ep.includes('/portfolio-kpis')) {
+    return {
+      active_projects: 4,
+      health_score: "96%",
+      completed_sprints: 12,
+      open_defects: 5
+    };
+  }
+
+  // Projects
+  if (ep.includes('/projects')) {
+    if (ep.match(/\/projects\/\d+$/)) {
+      return {
+        id: 1,
+        name: "BugFlow Core Platform",
+        description: "AI-native defect tracking and engineering intelligence platform.",
+        status: "Active",
+        health: "Healthy",
+        priority: "High",
+        owner_id: 1,
+        created_at: new Date().toISOString()
+      };
+    }
+    return [
+      { id: 1, name: "BugFlow Core Platform", description: "AI-native defect tracking platform.", status: "Active", health: "Healthy", priority: "High", key: "BUG" },
+      { id: 2, name: "Cloud Infrastructure Setup", description: "Vercel + Render + PostgreSQL production stack.", status: "Active", health: "Healthy", priority: "Medium", key: "INFRA" },
+      { id: 3, name: "Mobile App Redesign", description: "React Native mobile client for QA field testing.", status: "Planning", health: "Warning", priority: "High", key: "MOB" }
+    ];
+  }
+
+  // Issues
+  if (ep.includes('/issues')) {
+    if (ep.match(/\/issues\/\d+$/)) {
+      return {
+        id: 101,
+        title: "Verify Vercel SPA routing fallback for direct link refresh",
+        description: "Ensure client side routing rewrites work on all nested routes.",
+        status: "In Progress",
+        severity: "High",
+        priority: "P1",
+        project_id: 1,
+        assigned_to: 1,
+        created_at: new Date().toISOString()
+      };
+    }
+    return [
+      { id: 101, title: "Verify Vercel SPA routing fallback", status: "In Progress", severity: "High", priority: "P1", project_id: 1, assigned_to: 1 },
+      { id: 102, title: "Configure PostgreSQL connection pooling", status: "Resolved", severity: "Medium", priority: "P2", project_id: 1, assigned_to: 1 },
+      { id: 103, title: "Optimize Recharts dashboard chunk bundle size", status: "Open", severity: "Low", priority: "P3", project_id: 2, assigned_to: 1 }
+    ];
+  }
+
+  // Users & People
+  if (ep.includes('/users') || ep.includes('/people') || ep.includes('/members')) {
+    return [
+      { id: 1, name: "George Dev", email: "george@gmail.com", role: "Admin", department: "Engineering" },
+      { id: 2, name: "Sarah Jenkins", email: "sarah@bugflow.io", role: "Lead Engineer", department: "Backend" },
+      { id: 3, name: "Alex Rivera", email: "alex@bugflow.io", role: "QA Lead", department: "Quality" }
+    ];
+  }
+
+  // Notifications
+  if (ep.includes('/notifications')) {
+    return [
+      { id: 1, title: "Deployment Ready", message: "BugFlow v4.0 live on Vercel.", is_read: false, created_at: new Date().toISOString() }
+    ];
+  }
+
+  // Sprints
+  if (ep.includes('/sprints')) {
+    return [
+      { id: 1, name: "Sprint 24 - Production Release", status: "Active", start_date: "2026-09-15", end_date: "2026-09-29" }
+    ];
+  }
+
+  // Milestones
+  if (ep.includes('/milestones')) {
+    return [
+      { id: 1, title: "v4.0 Production Launch", due_date: "2026-09-30", status: "In Progress" }
+    ];
+  }
+
+  // Documents
+  if (ep.includes('/documents')) {
+    return [
+      { id: 1, title: "Architecture & Deployment Specification", category: "Architecture", status: "Approved" }
+    ];
+  }
+
+  // Workspaces, Departments, Goals, Labels, SLA, Automation, Incidents, Activity, Findings, Anomalies
+  if (
+    ep.includes('/workspaces') ||
+    ep.includes('/departments') ||
+    ep.includes('/goals') ||
+    ep.includes('/labels') ||
+    ep.includes('/sla') ||
+    ep.includes('/automation') ||
+    ep.includes('/incidents') ||
+    ep.includes('/activity') ||
+    ep.includes('/findings') ||
+    ep.includes('/anomalies') ||
+    ep.includes('/queries') ||
+    ep.includes('/squads')
+  ) {
+    return [];
+  }
+
+  // Default array vs object check based on plural endpoints
+  if (ep.endsWith('s') || ep.includes('/list') || ep.includes('/all')) {
+    return [];
+  }
+
+  return {};
+};
+
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('bugflow_token');
   
@@ -41,7 +172,7 @@ async function request(endpoint, options = {}) {
     response = await fetch(`${API_BASE_URL}${cleanEndpoint}`, config);
   } catch (netErr) {
     if (token && token.startsWith('demo_token_')) {
-      return Array.isArray(options.defaultFallback) ? [] : (options.defaultFallback || {});
+      return getDemoFallbackForEndpoint(cleanEndpoint);
     }
     throw new Error('Network error: Unable to connect to server.');
   }
@@ -61,7 +192,7 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     if (token && token.startsWith('demo_token_') && (options.method || 'GET') === 'GET') {
-      return {};
+      return getDemoFallbackForEndpoint(cleanEndpoint);
     }
     const errorMsg = data.detail || 'An unexpected API error occurred.';
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
