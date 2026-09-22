@@ -1,27 +1,11 @@
 services:
-  # 1. FastAPI Backend Web Service (Free Tier)
+  # BugFlow Unified Full-Stack Application (React UI + FastAPI Backend in 1 Service)
   - type: web
-    name: bugflow-backend
+    name: bugflow
     runtime: python
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-
-  # 2. React Frontend Static Site (Automatically Free)
-  - type: web
-    name: bugflow-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://bugflow-backend.onrender.com/api
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

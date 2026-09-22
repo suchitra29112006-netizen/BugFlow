@@ -476,11 +476,28 @@ def seed_initial_data():
         db.close()
 
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "online",
-        "app": "BugFlow API",
-        "version": "4.0.0",
-        "architecture": "Defect Intelligence + Engineering Knowledge + Security + Predictive Analytics"
-    }
+from fastapi.responses import FileResponse
+
+FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+if os.path.exists(FRONTEND_DIST):
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="static_assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("uploads/"):
+            return {"detail": "Not found"}
+        file_path = os.path.join(FRONTEND_DIST, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
+else:
+    @app.get("/")
+    def read_root():
+        return {
+            "status": "online",
+            "app": "BugFlow API",
+            "version": "4.0.0",
+            "architecture": "Defect Intelligence + Engineering Knowledge + Security + Predictive Analytics"
+        }
