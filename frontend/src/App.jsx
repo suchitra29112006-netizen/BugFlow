@@ -6,6 +6,7 @@ import { LandingPage } from './components/LandingPage';
 import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { Projects } from './pages/Projects';
+import { ProjectDetail } from './pages/ProjectDetail';
 import { Issues } from './pages/Issues';
 import { IssueDetail } from './pages/IssueDetail';
 import { Sprints } from './pages/Sprints';
@@ -17,6 +18,7 @@ import { Timesheets } from './pages/Timesheets';
 import { SLAManagement } from './pages/SLAManagement';
 import { Automation } from './pages/Automation';
 import { Documents } from './pages/Documents';
+import { DocumentDetail } from './pages/DocumentDetail';
 import { AICenter } from './pages/AICenter';
 import { SecurityCenter } from './pages/SecurityCenter';
 import { PerformanceCenter } from './pages/PerformanceCenter';
@@ -28,6 +30,7 @@ import WorkspacesPage from './pages/WorkspacesPage';
 import TeamsPage from './pages/TeamsPage';
 import { PeoplePage } from './pages/PeoplePage';
 import { GoalsPage } from './pages/GoalsPage';
+import { GoalDetail } from './pages/GoalDetail';
 import { AskPortalPage } from './pages/AskPortalPage';
 import { TestManagementPage } from './pages/TestManagementPage';
 import { ReleasesPage } from './pages/ReleasesPage';
@@ -35,6 +38,8 @@ import { IncidentsPage } from './pages/IncidentsPage';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { TechnicalDebtPage } from './pages/TechnicalDebtPage';
 import { OrganizationDetail } from './pages/OrganizationDetail';
+import DepartmentDetail from './pages/DepartmentDetail';
+import WorkspaceDetail from './pages/WorkspaceDetail';
 import OnboardingModal from './components/OnboardingModal';
 
 import { QRCodeModal } from './components/QRCodeModal';
@@ -51,17 +56,36 @@ export function App() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [selectedSprintId, setSelectedSprintId] = useState(null);
   const [selectedOrgId, setSelectedOrgId] = useState(1);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(1);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(1);
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [selectedDocumentId, setSelectedDocumentId] = useState(null);
   const [projects, setProjects] = useState([]);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  // Deep-linking URL Route Listener (/organizations/:orgId)
+  // Deep-linking URL Route Listener (/organizations/:orgId, /departments/:departmentId, /workspaces/:workspaceId, /documents/:docId)
   useEffect(() => {
     const handleUrlRoute = () => {
       const path = window.location.pathname;
-      const match = path.match(/\/organizations\/(\d+)/);
-      if (match) {
-        setSelectedOrgId(parseInt(match[1]));
+      const matchOrg = path.match(/\/organizations\/(\d+)/);
+      if (matchOrg) {
+        setSelectedOrgId(parseInt(matchOrg[1]));
         setActiveTab('org_detail');
+      }
+      const matchDept = path.match(/\/departments\/(\d+)/);
+      if (matchDept) {
+        setSelectedDepartmentId(parseInt(matchDept[1]));
+        setActiveTab('department_detail');
+      }
+      const matchWs = path.match(/\/workspaces\/(\d+)/);
+      if (matchWs) {
+        setSelectedWorkspaceId(parseInt(matchWs[1]));
+        setActiveTab('workspace_detail');
+      }
+      const matchDoc = path.match(/\/documents\/(\d+)/);
+      if (matchDoc) {
+        setSelectedDocumentId(parseInt(matchDoc[1]));
+        setActiveTab('document_detail');
       }
     };
     handleUrlRoute();
@@ -139,7 +163,7 @@ export function App() {
     setSelectedProjectId(projectId);
     setSelectedSprintId(null);
     setSelectedIssueId(null);
-    setActiveTab('issues');
+    setActiveTab('project_detail');
   };
 
   const handleSelectSprint = (sprintId) => {
@@ -333,6 +357,14 @@ export function App() {
                 <Projects onSelectProject={handleSelectProject} />
               )}
 
+              {activeTab === 'project_detail' && selectedProjectId && (
+                <ProjectDetail 
+                  projectId={selectedProjectId} 
+                  onBack={() => setActiveTab('projects')} 
+                  onSelectIssue={handleSelectIssue} 
+                />
+              )}
+
               {activeTab === 'issues' && (
                 <Issues
                   projects={projects}
@@ -371,7 +403,20 @@ export function App() {
               )}
 
               {activeTab === 'documents' && (
-                <Documents projects={projects} />
+                <Documents 
+                  projects={projects} 
+                  onSelectDocument={(docId) => {
+                    setSelectedDocumentId(docId);
+                    setActiveTab('document_detail');
+                  }} 
+                />
+              )}
+
+              {activeTab === 'document_detail' && (
+                <DocumentDetail 
+                  documentId={selectedDocumentId} 
+                  onBack={() => setActiveTab('documents')} 
+                />
               )}
 
               {activeTab === 'aicenter' && (
@@ -404,11 +449,47 @@ export function App() {
               )}
 
               {activeTab === 'departments' && (
-                <DepartmentsPage />
+                <DepartmentsPage
+                  onNavigate={(tab, id) => {
+                    if (tab === 'department_detail' && id) setSelectedDepartmentId(id);
+                    setActiveTab(tab);
+                    setSelectedIssueId(null);
+                  }}
+                />
+              )}
+
+              {activeTab === 'department_detail' && (
+                <DepartmentDetail
+                  departmentId={selectedDepartmentId}
+                  onNavigate={(tab, id) => {
+                    if (tab === 'department_detail' && id) setSelectedDepartmentId(id);
+                    setActiveTab(tab);
+                    setSelectedIssueId(null);
+                  }}
+                  onSelectIssue={handleSelectIssue}
+                  onSelectProject={handleSelectProject}
+                />
               )}
 
               {activeTab === 'workspaces' && (
-                <WorkspacesPage />
+                <WorkspacesPage
+                  onSelectWorkspace={(id) => {
+                    setSelectedWorkspaceId(id);
+                    setActiveTab('workspace_detail');
+                    window.history.pushState({}, '', `/workspaces/${id}`);
+                  }}
+                />
+              )}
+
+              {activeTab === 'workspace_detail' && (
+                <WorkspaceDetail
+                  workspaceId={selectedWorkspaceId}
+                  onBack={() => {
+                    setActiveTab('workspaces');
+                    window.history.pushState({}, '', '/workspaces');
+                  }}
+                  onNavigateToProject={(projId) => handleSelectProject(projId)}
+                />
               )}
 
               {activeTab === 'teams' && (
@@ -420,7 +501,11 @@ export function App() {
               )}
 
               {activeTab === 'goals' && (
-                <GoalsPage />
+                selectedGoalId ? (
+                  <GoalDetail goalId={selectedGoalId} onBack={() => setSelectedGoalId(null)} />
+                ) : (
+                  <GoalsPage onSelectGoal={(gId) => setSelectedGoalId(gId)} />
+                )
               )}
 
               {activeTab === 'askportal' && (
@@ -440,7 +525,13 @@ export function App() {
               )}
 
               {activeTab === 'kb' && (
-                <KnowledgeBasePage />
+                <Documents 
+                  projects={projects} 
+                  onSelectDocument={(docId) => {
+                    setSelectedDocumentId(docId);
+                    setActiveTab('document_detail');
+                  }} 
+                />
               )}
 
               {activeTab === 'debt' && (

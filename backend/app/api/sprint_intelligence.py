@@ -214,8 +214,8 @@ def list_sprints(
         count = len(issues)
         
         if count > 0:
-            planned_pts = sum(int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0) for i in issues)
-            completed_pts = sum(int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0) for i in issues if i.status in [IssueStatus.RESOLVED, IssueStatus.CLOSED])
+            planned_pts = sum(getattr(i, 'story_points', None) or max(1, int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0)) for i in issues)
+            completed_pts = sum(getattr(i, 'story_points', None) or max(1, int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0)) for i in issues if i.status in [IssueStatus.RESOLVED, IssueStatus.CLOSED])
         else:
             planned_pts = s.planned_story_points or 30
             completed_pts = s.completed_story_points or 0
@@ -251,6 +251,31 @@ def list_sprints(
     return res
 
 
+@router.delete("/{sprint_id}")
+def delete_sprint_intelligence(
+    sprint_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    sprint = db.query(Sprint).filter(Sprint.id == sprint_id).first()
+    if not sprint:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found.")
+
+    sprint_name = sprint.name
+    # Unassign issues back to backlog
+    db.query(Issue).filter(Issue.sprint_id == sprint_id).update({"sprint_id": None}, synchronize_session=False)
+
+    # Delete dependent items
+    db.query(SprintObjective).filter(SprintObjective.sprint_id == sprint_id).delete(synchronize_session=False)
+    db.query(SprintDependency).filter(SprintDependency.sprint_id == sprint_id).delete(synchronize_session=False)
+    db.query(SprintRetrospective).filter(SprintRetrospective.sprint_id == sprint_id).delete(synchronize_session=False)
+
+    db.delete(sprint)
+    db.commit()
+
+    return {"status": "success", "message": f"Sprint '{sprint_name}' deleted successfully. All assigned bugs moved to backlog."}
+
+
 @router.get("/{sprint_id}")
 def get_sprint_details(
     sprint_id: int,
@@ -265,8 +290,8 @@ def get_sprint_details(
     objs = db.query(SprintObjective).filter(SprintObjective.sprint_id == sprint.id).all()
 
     if len(issues) > 0:
-        planned_pts = sum(int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0) for i in issues)
-        completed_pts = sum(int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0) for i in issues if i.status in [IssueStatus.RESOLVED, IssueStatus.CLOSED])
+        planned_pts = sum(getattr(i, 'story_points', None) or max(1, int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0)) for i in issues)
+        completed_pts = sum(getattr(i, 'story_points', None) or max(1, int((getattr(i, 'est_resolution_hours', None) or 6.0) / 2.0)) for i in issues if i.status in [IssueStatus.RESOLVED, IssueStatus.CLOSED])
     else:
         planned_pts = sprint.planned_story_points or 30
         completed_pts = sprint.completed_story_points or 0

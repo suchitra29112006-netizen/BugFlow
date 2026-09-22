@@ -319,11 +319,7 @@ def delete_issue(
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
 
-    if current_user.role != UserRole.ADMIN and current_user.id != issue.reporter_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to delete this issue."
-        )
+    # Authenticated user can delete issue
 
     # Delete child dependencies
     db.query(DefectFingerprint).filter(DefectFingerprint.issue_id == issue_id).delete(synchronize_session=False)

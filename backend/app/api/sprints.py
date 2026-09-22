@@ -49,6 +49,26 @@ def list_sprints(
     return sprints
 
 
+@router.delete("/{sprint_id}")
+def delete_sprint(
+    sprint_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    sprint = db.query(Sprint).filter(Sprint.id == sprint_id).first()
+    if not sprint:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprint not found.")
+
+    sprint_name = sprint.name
+    # Unassign issues back to backlog
+    db.query(Issue).filter(Issue.sprint_id == sprint_id).update({"sprint_id": None}, synchronize_session=False)
+
+    db.delete(sprint)
+    db.commit()
+
+    return {"status": "success", "message": f"Sprint '{sprint_name}' deleted successfully."}
+
+
 # Phase 5: AI Sprint Rebalancer Proposal Endpoint
 @router.get("/{sprint_id}/rebalance-proposal")
 def get_sprint_rebalance_proposal(

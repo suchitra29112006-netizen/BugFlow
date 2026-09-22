@@ -101,6 +101,20 @@ def apply_schema_migrations(target_engine=None):
                 conn.execute(text("ALTER TABLE projects ADD COLUMN repository_url VARCHAR(255);"))
             if "environment" not in columns_proj:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN environment VARCHAR(100) DEFAULT 'Production';"))
+            if "start_date" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN start_date DATETIME;"))
+            if "target_date" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN target_date DATETIME;"))
+            if "visibility" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN visibility VARCHAR(50) DEFAULT 'Public';"))
+            if "archived_at" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN archived_at DATETIME;"))
+            if "health" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN health VARCHAR(50) DEFAULT 'Healthy';"))
+            if "health_reasons_json" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN health_reasons_json TEXT DEFAULT '[]';"))
+            if "updated_at" not in columns_proj:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN updated_at DATETIME;"))
 
             # Check organizations table columns
             result_org = conn.execute(text("PRAGMA table_info(organizations);"))
@@ -121,6 +135,66 @@ def apply_schema_migrations(target_engine=None):
                 conn.execute(text("ALTER TABLE organizations ADD COLUMN regional_settings_json TEXT;"))
             if "ai_settings_json" not in columns_org:
                 conn.execute(text("ALTER TABLE organizations ADD COLUMN ai_settings_json TEXT;"))
+
+            # Check departments table columns
+            result_dept = conn.execute(text("PRAGMA table_info(departments);"))
+            columns_dept = [row[1] for row in result_dept.fetchall()]
+            if "code" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN code VARCHAR(50);"))
+            if "department_type" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN department_type VARCHAR(100) DEFAULT 'Engineering';"))
+            if "lead_id" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN lead_id INTEGER REFERENCES users(id);"))
+            if "timezone" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN timezone VARCHAR(100) DEFAULT 'UTC (Coordinated Universal Time)';"))
+            if "working_hours" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN working_hours VARCHAR(100) DEFAULT '09:00 - 18:00 MON-FRI';"))
+            if "default_sla_policy_id" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN default_sla_policy_id INTEGER;"))
+            if "status" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN status VARCHAR(50) DEFAULT 'Active';"))
+            if "updated_at" not in columns_dept:
+                conn.execute(text("ALTER TABLE departments ADD COLUMN updated_at DATETIME;"))
+
+            # Check goals table columns
+            result_goals = conn.execute(text("PRAGMA table_info(goals);"))
+            columns_goals = [row[1] for row in result_goals.fetchall()]
+            if "department_id" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN department_id INTEGER REFERENCES departments(id);"))
+            if "workspace_id" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id);"))
+            if "goal_type" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN goal_type VARCHAR(50) DEFAULT 'Engineering';"))
+            if "time_period" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN time_period VARCHAR(50) DEFAULT 'Q4 2026';"))
+            if "start_date" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN start_date DATETIME;"))
+            if "target_date" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN target_date DATETIME;"))
+            if "expected_progress" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN expected_progress FLOAT DEFAULT 0.0;"))
+            if "health_summary" not in columns_goals:
+                conn.execute(text("ALTER TABLE goals ADD COLUMN health_summary TEXT;"))
+
+            # Check workspaces table columns
+            result_ws = conn.execute(text("PRAGMA table_info(workspaces);"))
+            columns_ws = [row[1] for row in result_ws.fetchall()]
+            if "key" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN key VARCHAR(20);"))
+            if "workspace_type" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN workspace_type VARCHAR(50) DEFAULT 'Engineering';"))
+            if "lead_id" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN lead_id INTEGER REFERENCES users(id);"))
+            if "status" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN status VARCHAR(50) DEFAULT 'Active';"))
+            if "timezone" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN timezone VARCHAR(50) DEFAULT 'UTC';"))
+            if "working_hours" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN working_hours VARCHAR(100) DEFAULT '09:00 - 17:00';"))
+            if "default_sprint_length" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN default_sprint_length INTEGER DEFAULT 14;"))
+            if "repositories_json" not in columns_ws:
+                conn.execute(text("ALTER TABLE workspaces ADD COLUMN repositories_json TEXT;"))
 
             # Check comments table columns
             result_comm = conn.execute(text("PRAGMA table_info(comments);"))
@@ -161,6 +235,44 @@ def apply_schema_migrations(target_engine=None):
                 conn.execute(text("ALTER TABLE sprints ADD COLUMN created_by INTEGER REFERENCES users(id);"))
             if "updated_at" not in columns_sprints:
                 conn.execute(text("ALTER TABLE sprints ADD COLUMN updated_at DATETIME;"))
+
+            # Check documents table columns
+            result_docs = conn.execute(text("PRAGMA table_info(documents);"))
+            columns_docs = [row[1] for row in result_docs.fetchall()]
+            if "description" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN description TEXT;"))
+            if "document_type" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN document_type VARCHAR(100) DEFAULT 'Technical Spec';"))
+            if "category" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN category VARCHAR(50) DEFAULT 'ENGINEERING';"))
+            if "status" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN status VARCHAR(50) DEFAULT 'PUBLISHED';"))
+            if "version" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN version VARCHAR(20) DEFAULT 'v1.0';"))
+            if "visibility" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN visibility VARCHAR(50) DEFAULT 'INTERNAL';"))
+            if "author_id" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN author_id INTEGER REFERENCES users(id);"))
+            if "owner_id" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN owner_id INTEGER REFERENCES users(id);"))
+            if "reviewer_id" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN reviewer_id INTEGER REFERENCES users(id);"))
+            if "review_status" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN review_status VARCHAR(50) DEFAULT 'APPROVED';"))
+            if "review_comments" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN review_comments TEXT;"))
+            if "workspace_id" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN workspace_id INTEGER REFERENCES workspaces(id);"))
+            if "department_id" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN department_id INTEGER REFERENCES departments(id);"))
+            if "tags" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN tags TEXT DEFAULT '[]';"))
+            if "last_reviewed_at" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN last_reviewed_at DATETIME;"))
+            if "review_due_at" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN review_due_at DATETIME;"))
+            if "updated_at" not in columns_docs:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN updated_at DATETIME;"))
 
     except Exception as e:
         print(f"Notice: Migration check info: {e}")

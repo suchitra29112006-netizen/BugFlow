@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Settings, X, Building2, Globe, Clock, ShieldCheck, Sparkles, AlertTriangle, Save, Check } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function OrgSettingsModal({ isOpen, onClose, organization, onUpdated }) {
+export default function OrgSettingsModal({ isOpen, onClose, organization, onUpdated, onDeleted }) {
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // General & Regional Fields
   const [orgName, setOrgName] = useState('');
   const [orgDesc, setOrgDesc] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [industry, setIndustry] = useState('');
   const [companySize, setCompanySize] = useState('');
   const [country, setCountry] = useState('United States');
@@ -34,6 +36,7 @@ export default function OrgSettingsModal({ isOpen, onClose, organization, onUpda
       setOrgName(organization.name || '');
       setOrgDesc(organization.description || '');
       setLogoUrl(organization.logo_url || '');
+      setWebsiteUrl(organization.website || '');
       setIndustry(organization.industry || 'Software Engineering & Technology');
       setCompanySize(organization.company_size || '50-200 Employees');
       setTimezone(organization.timezone || 'UTC (Coordinated Universal Time)');
@@ -48,10 +51,11 @@ export default function OrgSettingsModal({ isOpen, onClose, organization, onUpda
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/api/v1/organizations/settings', {
+      await api.put('/v1/organizations/settings', {
         name: orgName,
         description: orgDesc,
         logo_url: logoUrl,
+        website: websiteUrl,
         industry,
         company_size: companySize,
         timezone,
@@ -65,6 +69,31 @@ export default function OrgSettingsModal({ isOpen, onClose, organization, onUpda
       alert("Failed to update organization settings: " + (err.message || err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteOrganization = async () => {
+    const targetName = orgName || organization?.name || 'this organization';
+    const targetId = organization?.id || 1;
+
+    if (!window.confirm(`⚠️ PERMANENT DELETE WARNING ⚠️\n\nAre you sure you want to delete "${targetName}"?\n\nThis will permanently purge all linked departments, squads, projects, defects, and activity logs.\n\nThis action CANNOT be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await api.delete(`/v1/organizations/${targetId}`);
+      alert(`Organization "${targetName}" has been permanently deleted.`);
+      if (onDeleted) {
+        onDeleted(targetId);
+      } else if (onUpdated) {
+        onUpdated();
+      }
+      onClose();
+    } catch (err) {
+      alert("Failed to delete organization: " + (err.message || err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -149,9 +178,15 @@ export default function OrgSettingsModal({ isOpen, onClose, organization, onUpda
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Logo Image URL</label>
-                <input type="url" className="form-input" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://domain.com/logo.png" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                <div className="form-group">
+                  <label>Logo Image URL</label>
+                  <input type="url" className="form-input" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://domain.com/logo.png" />
+                </div>
+                <div className="form-group">
+                  <label>Company Website URL</label>
+                  <input type="text" className="form-input" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} placeholder="https://novaui.demo" />
+                </div>
               </div>
             </>
           )}
@@ -235,14 +270,37 @@ export default function OrgSettingsModal({ isOpen, onClose, organization, onUpda
 
           {/* DANGER ZONE TAB */}
           {activeTab === 'danger' && (
-            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '1rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <strong style={{ color: '#ef4444', fontSize: '0.95rem' }}>Organization Danger Zone</strong>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Archiving or deleting an organization permanently purges all linked departments, squads, workspaces, projects, and work items. This action cannot be undone.
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '1.25rem', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+                <AlertTriangle size={20} />
+                <strong style={{ fontSize: '1rem' }}>Organization Danger Zone</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Deleting an organization permanently purges all linked departments, squads, workspaces, projects, defects, and activity logs. This action <strong style={{ color: '#ef4444' }}>cannot be undone</strong>.
               </p>
-              <div>
-                <button type="button" onClick={() => alert("Archive functionality is protected by Organization Admin policy.")} className="btn" style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.45rem 0.95rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
-                  Archive Organization
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteOrganization}
+                  disabled={deleting}
+                  className="btn"
+                  style={{
+                    background: '#ef4444',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '0.55rem 1.1rem',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                  }}
+                >
+                  <AlertTriangle size={16} />
+                  {deleting ? 'Deleting Organization...' : 'Delete Organization'}
                 </button>
               </div>
             </div>

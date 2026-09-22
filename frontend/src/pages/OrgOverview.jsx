@@ -25,7 +25,9 @@ import {
   Check,
   Briefcase,
   ChevronRight,
-  Zap
+  Zap,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../services/api';
 import OrgSwitcher from '../components/OrgSwitcher';
@@ -180,8 +182,20 @@ export function OrgOverview({ onNavigate }) {
                   🔍 Detail View →
                 </span>
               </div>
-              <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {org.description} • {org.industry || 'Software Engineering'} • {org.company_size || '50-200 Members'}
+              <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span>{org.description} • {org.industry || 'Software Engineering'} • {org.company_size || '50-200 Members'}</span>
+                {org.website && (
+                  <a 
+                    href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontWeight: 800, textDecoration: 'underline' }}
+                    title={`Open ${org.name} Demo Website`}
+                  >
+                    <Globe size={14} /> {org.website} <ExternalLink size={12} />
+                  </a>
+                )}
               </p>
             </div>
           </div>
@@ -445,6 +459,7 @@ export function OrgOverview({ onNavigate }) {
         onClose={() => setIsSettingsModalOpen(false)}
         organization={org}
         onUpdated={() => fetchOrgOverview()}
+        onDeleted={() => fetchOrgOverview()}
       />
 
     </div>

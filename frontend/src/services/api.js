@@ -260,17 +260,63 @@ export const api = {
       body: JSON.stringify({ query }),
     }),
 
-  // Projects
-  getProjects: () => request('/projects'),
+  // Projects & Portfolio
+  getPortfolioKPIs: () => request('/projects/portfolio-kpis'),
+  getProjects: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status) query.append('status', params.status);
+    if (params.health) query.append('health', params.health);
+    if (params.priority) query.append('priority', params.priority);
+    if (params.project_type) query.append('project_type', params.project_type);
+    if (params.workspace_id) query.append('workspace_id', params.workspace_id);
+    if (params.department_id) query.append('department_id', params.department_id);
+    if (params.team_id) query.append('team_id', params.team_id);
+    if (params.owner_id) query.append('owner_id', params.owner_id);
+    if (params.sort_by) query.append('sort_by', params.sort_by);
+    if (params.include_archived) query.append('include_archived', 'true');
+    const queryString = query.toString();
+    return request(`/projects${queryString ? `?${queryString}` : ''}`);
+  },
+  getProjectDetail: (id) => request(`/projects/${id}`),
   createProject: (data) =>
     request('/projects', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  updateProject: (id, data) =>
+    request(`/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  archiveProject: (id) =>
+    request(`/projects/${id}/archive`, {
+      method: 'POST',
+    }),
+  restoreProject: (id) =>
+    request(`/projects/${id}/restore`, {
+      method: 'POST',
+    }),
   deleteProject: (id) =>
     request(`/projects/${id}`, {
       method: 'DELETE',
     }),
+  getProjectIssues: (id) => request(`/projects/${id}/issues`),
+  getProjectSprints: (id) => request(`/projects/${id}/sprints`),
+  getProjectMilestones: (id) => request(`/projects/${id}/milestones`),
+  getProjectGoals: (id) => request(`/projects/${id}/goals`),
+  getProjectSquads: (id) => request(`/projects/${id}/squads`),
+  getProjectReleases: (id) => request(`/projects/${id}/releases`),
+  getProjectQA: (id) => request(`/projects/${id}/qa`),
+  getProjectIncidents: (id) => request(`/projects/${id}/incidents`),
+  getProjectAnalytics: (id) => request(`/projects/${id}/analytics`),
+  getProjectAIInsights: (id) => request(`/projects/${id}/ai-insights`),
+  askProjectAI: (id, message) =>
+    request(`/projects/${id}/ai-chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+  getProjectActivity: (id) => request(`/projects/${id}/activity`),
 
   // Issues
   getIssues: (params = {}) => {
@@ -587,7 +633,158 @@ export const api = {
     return request(`/v1/organizations/${orgId}/issues${queryString}`);
   },
   createOrgIssue: (orgId, issueData) => request(`/v1/organizations/${orgId}/issues`, { method: 'POST', body: JSON.stringify(issueData) }),
+  createOrgProject: (orgId, projectData) => request(`/v1/organizations/${orgId}/projects`, { method: 'POST', body: JSON.stringify(projectData) }),
   getOrgMembers: (orgId) => request(`/v1/organizations/${orgId}/members`),
+
+  // Department Management Module APIs
+  getDepartments: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.category) query.append('category', params.category);
+    if (params.sort_by) query.append('sort_by', params.sort_by);
+    if (params.status_filter) query.append('status_filter', params.status_filter);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/departments${qStr}`);
+  },
+  createDepartment: (deptData) => request('/v1/departments', { method: 'POST', body: JSON.stringify(deptData) }),
+  getDepartmentDetail: (deptId) => request(`/v1/departments/${deptId}`),
+  updateDepartment: (deptId, deptData) => request(`/v1/departments/${deptId}`, { method: 'PUT', body: JSON.stringify(deptData) }),
+  archiveDepartment: (deptId) => request(`/v1/departments/${deptId}/archive`, { method: 'POST' }),
+
+  getDepartmentSquads: (deptId) => request(`/v1/departments/${deptId}/squads`),
+  createDepartmentSquad: (deptId, squadData) => request(`/v1/departments/${deptId}/squads`, { method: 'POST', body: JSON.stringify(squadData) }),
+  getDepartmentMembers: (deptId) => request(`/v1/departments/${deptId}/members`),
+  addDepartmentMember: (deptId, memberData) => request(`/v1/departments/${deptId}/members`, { method: 'POST', body: JSON.stringify(memberData) }),
+  getDepartmentProjects: (deptId) => request(`/v1/departments/${deptId}/projects`),
+  getDepartmentIssues: (deptId) => request(`/v1/departments/${deptId}/issues`),
+  getDepartmentSprints: (deptId) => request(`/v1/departments/${deptId}/sprints`),
+  getDepartmentGoals: (deptId) => request(`/v1/departments/${deptId}/goals`),
+  createDepartmentGoal: (deptId, goalData) => request(`/v1/departments/${deptId}/goals`, { method: 'POST', body: JSON.stringify(goalData) }),
+  getDepartmentSLA: (deptId) => request(`/v1/departments/${deptId}/sla`),
+  getDepartmentAnalytics: (deptId) => request(`/v1/departments/${deptId}/analytics`),
+  getDepartmentActivity: (deptId) => request(`/v1/departments/${deptId}/activity`),
+
+  // Workspaces & Project Portfolios Module APIs
+  getWorkspaces: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.category) query.append('category', params.category);
+    if (params.sort_by) query.append('sort_by', params.sort_by);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/workspaces${qStr}`);
+  },
+  createWorkspace: (data) => request('/v1/workspaces', { method: 'POST', body: JSON.stringify(data) }),
+  getWorkspace: (id) => request(`/v1/workspaces/${id}`),
+  updateWorkspace: (id, data) => request(`/v1/workspaces/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteWorkspace: (id) => request(`/v1/workspaces/${id}`, { method: 'DELETE' }),
+
+  getWorkspaceOverview: (id) => request(`/v1/workspaces/${id}/overview`),
+  getWorkspaceProjects: (id) => request(`/v1/workspaces/${id}/projects`),
+  getWorkspaceTeams: (id) => request(`/v1/workspaces/${id}/teams`),
+  getWorkspaceMembers: (id) => request(`/v1/workspaces/${id}/members`),
+  getWorkspaceIssues: (id, params = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.append('status', params.status);
+    if (params.severity) query.append('severity', params.severity);
+    if (params.search) query.append('search', params.search);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/workspaces/${id}/issues${qStr}`);
+  },
+  getWorkspaceSprints: (id) => request(`/v1/workspaces/${id}/sprints`),
+  getWorkspaceRepositories: (id) => request(`/v1/workspaces/${id}/repositories`),
+  getWorkspaceReleases: (id) => request(`/v1/workspaces/${id}/releases`),
+  getWorkspaceIncidents: (id) => request(`/v1/workspaces/${id}/incidents`),
+  getWorkspaceDocuments: (id) => request(`/v1/workspaces/${id}/documents`),
+  getWorkspaceAnalytics: (id) => request(`/v1/workspaces/${id}/analytics`),
+  getWorkspaceActivity: (id) => request(`/v1/workspaces/${id}/activity`),
+  generateWorkspaceAIInsights: (id) => request(`/v1/workspaces/${id}/ai-insights`, { method: 'POST' }),
+
+  // People & Workload Center APIs
+  getPeople: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.department_id) query.append('department_id', params.department_id);
+    if (params.workspace_id) query.append('workspace_id', params.workspace_id);
+    if (params.squad_id) query.append('squad_id', params.squad_id);
+    if (params.role) query.append('role', params.role);
+    if (params.workload_status) query.append('workload_status', params.workload_status);
+    if (params.availability_status) query.append('availability_status', params.availability_status);
+    if (params.skill) query.append('skill', params.skill);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/people${qStr}`);
+  },
+  getPeopleOverview: () => request('/v1/people/overview'),
+  getPersonWorkloadDrawer: (id) => request(`/v1/people/${id}/drawer`),
+  syncPeopleCapacity: () => request('/v1/people/sync-capacity', { method: 'POST' }),
+  addPerson: (data) => request('/v1/people', { method: 'POST', body: JSON.stringify(data) }),
+  getAiAssignmentMatch: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.required_skill) query.append('required_skill', params.required_skill);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/people/ai-assignment-match${qStr}`);
+  },
+  exportPeopleWorkloadCSV: async () => {
+    const token = localStorage.getItem('bugflow_token');
+    const response = await fetch('/api/v1/people/export', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+    if (!response.ok) {
+      throw new Error(`Export failed with status ${response.status}`);
+    }
+    return await response.blob();
+  },
+
+  // Goals & OKRs Module APIs
+  getGoals: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.status) query.append('status', params.status);
+    if (params.owner_id) query.append('owner_id', params.owner_id);
+    if (params.department_id) query.append('department_id', params.department_id);
+    if (params.workspace_id) query.append('workspace_id', params.workspace_id);
+    if (params.team_id) query.append('team_id', params.team_id);
+    if (params.goal_type) query.append('goal_type', params.goal_type);
+    if (params.time_period) query.append('time_period', params.time_period);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/v1/goals${qStr}`);
+  },
+  getGoalDetail: (id) => request(`/v1/goals/${id}`),
+  createGoal: (data) => request('/v1/goals', { method: 'POST', body: JSON.stringify(data) }),
+  addKeyResult: (goalId, krData) => request(`/v1/goals/${goalId}/key-results`, { method: 'POST', body: JSON.stringify(krData) }),
+  updateManualKeyResult: (krId, data) => request(`/v1/goals/key-results/${krId}/manual-update`, { method: 'POST', body: JSON.stringify(data) }),
+  linkGoalEntity: (goalId, linkData) => request(`/v1/goals/${goalId}/links`, { method: 'POST', body: JSON.stringify(linkData) }),
+  getGoalAIRiskInsights: (goalId) => request(`/v1/goals/${goalId}/ai-risk-insights`),
+  recordGoalProgressHistory: (goalId, data) => request(`/v1/goals/${goalId}/progress-history`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Engineering Knowledge Hub APIs
+  getKnowledgeHubKPIs: () => request('/documents/kpis'),
+  getDocuments: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.project_id) query.append('project_id', params.project_id);
+    if (params.workspace_id) query.append('workspace_id', params.workspace_id);
+    if (params.department_id) query.append('department_id', params.department_id);
+    if (params.category) query.append('category', params.category);
+    if (params.document_type) query.append('document_type', params.document_type);
+    if (params.status) query.append('status', params.status);
+    if (params.review_status) query.append('review_status', params.review_status);
+    if (params.search) query.append('search', params.search);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/documents${qStr}`);
+  },
+  getRecentDocuments: (limit = 5) => request(`/documents/recent?limit=${limit}`),
+  getFavoriteDocuments: () => request('/documents/favorites'),
+  getDocumentDetail: (id) => request(`/documents/${id}`),
+  createDocument: (data) => request('/documents', { method: 'POST', body: JSON.stringify(data) }),
+  updateDocument: (id, data) => request(`/documents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteDocument: (id) => request(`/documents/${id}`, { method: 'DELETE' }),
+  reviewDocument: (id, reviewData) => request(`/documents/${id}/review`, { method: 'POST', body: JSON.stringify(reviewData) }),
+  addDocumentRelation: (id, relData) => request(`/documents/${id}/relations`, { method: 'POST', body: JSON.stringify(relData) }),
+  deleteDocumentRelation: (id, relationId) => request(`/documents/${id}/relations/${relationId}`, { method: 'DELETE' }),
+  addDocumentComment: (id, commentData) => request(`/documents/${id}/comments`, { method: 'POST', body: JSON.stringify(commentData) }),
+  restoreDocumentVersion: (id, versionId) => request(`/documents/${id}/versions/${versionId}/restore`, { method: 'POST' }),
+  aiSearchDocuments: (query, category = null, limit = 10) => request('/documents/ai/search', { method: 'POST', body: JSON.stringify({ query, category, limit }) }),
+  askKnowledgeAI: (question, documentId = null, contextCategory = null) => request('/documents/ai/ask', { method: 'POST', body: JSON.stringify({ question, document_id: documentId, context_category: contextCategory }) }),
+  executeAIDocumentAction: (action, documentId = null, promptContext = null) => request('/documents/ai/actions', { method: 'POST', body: JSON.stringify({ action, document_id: documentId, prompt_context: promptContext }) }),
 };
 
 

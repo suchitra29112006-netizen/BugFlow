@@ -3,8 +3,8 @@ from app.models.organization import Organization, Department
 from app.models.workspace import Workspace
 from app.models.board import Board
 from app.models.team import Team, TeamMember
-from app.models.goal import Goal, GoalProjectLink
-from app.models.project import Project
+from app.models.goal import Goal, KeyResult, KeyResultUpdateHistory, GoalLink, GoalProgressHistory, GoalActivity, GoalProjectLink
+from app.models.project import Project, ProjectSquad, ProjectMember
 from app.models.issue import Issue, IssueSeverity, IssueStatus, IssuePriority, ALLOWED_TRANSITIONS
 from app.models.comment import Comment
 from app.models.attachment import Attachment

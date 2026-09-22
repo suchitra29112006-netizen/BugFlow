@@ -14,6 +14,8 @@ from app.models.issue import Issue, IssueStatus, IssueSeverity, IssuePriority
 from app.models.sprint import Sprint
 from app.models.document import Document
 from app.models.health_snapshot import OrganizationHealthSnapshot
+from app.models.workspace import Workspace
+from app.models.activity_log import ActivityLog
 from app.auth.password import get_password_hash
 
 router = APIRouter(prefix="/api/v1/organizations", tags=["Organizations"])
@@ -110,6 +112,7 @@ def get_user_organizations(db: Session = Depends(get_db), current_user: User = D
         "logo_url": o.logo_url,
         "industry": o.industry,
         "company_size": o.company_size,
+        "website": o.website,
         "plan": o.plan or "Enterprise / AI Tier"
     } for o in orgs]
 
@@ -477,6 +480,7 @@ def get_org_overview(org_id: Optional[int] = None, db: Session = Depends(get_db)
             "logo_url": org.logo_url,
             "industry": getattr(org, 'industry', "Software Engineering & Technology"),
             "company_size": getattr(org, 'company_size', "50-200 Employees"),
+            "website": getattr(org, 'website', "https://bugflow.io"),
             "timezone": getattr(org, 'timezone', "UTC (Coordinated Universal Time)"),
             "working_hours": getattr(org, 'working_hours', "09:00 - 18:00 MON-FRI"),
             "currency": getattr(org, 'currency', "USD ($)"),
@@ -507,6 +511,19 @@ def get_org_overview(org_id: Optional[int] = None, db: Session = Depends(get_db)
         "pinned_documents": pinned_docs
     }
 
+@router.post("/executive-brief")
+def generate_executive_brief(org_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    target_id = org_id or 1
+    org = db.query(Organization).filter(Organization.id == target_id).first()
+    org_name = org.name if org else "BugFlow Technologies"
+    
+    issues = db.query(Issue).all()
+    total_issues = len(issues)
+    open_issues = len([i for i in issues if i.status != IssueStatus.CLOSED])
+    critical_issues = len([i for i in issues if i.severity == IssueSeverity.CRITICAL and i.status != IssueStatus.CLOSED])
+    resolved_issues = len([i for i in issues if i.status in [IssueStatus.RESOLVED, IssueStatus.CLOSED]])
+    sla_met_pct = round(max(85.0, min(99.5, 100.0 - (critical_issues * 3.5))), 1)
+
     return {
         "organization_name": org_name,
         "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
@@ -532,6 +549,170 @@ def get_org_overview(org_id: Optional[int] = None, db: Session = Depends(get_db)
 
 
 # --- Organization Detail & Org-Scoped Endpoints ---
+
+class OrganizationSettingsUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    logo_url: Optional[str] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+    country: Optional[str] = None
+    timezone: Optional[str] = None
+    working_hours: Optional[str] = None
+    currency: Optional[str] = None
+
+
+@router.put("/settings")
+@router.put("/{org_id}/settings")
+def update_organization_settings(
+    settings_in: OrganizationSettingsUpdate,
+    org_id: Optional[int] = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    target_id = org_id or 1
+    org = db.query(Organization).filter(Organization.id == target_id).first()
+    if not org:
+        org = db.query(Organization).first()
+    if not org:
+        org = Organization(id=1, name="BugFlow Technologies")
+        db.add(org)
+        db.commit()
+        db.refresh(org)
+
+    if settings_in.name is not None:
+        org.name = settings_in.name
+    if settings_in.description is not None:
+        org.description = settings_in.description
+    if settings_in.logo_url is not None:
+        org.logo_url = settings_in.logo_url
+    if settings_in.website is not None:
+        org.website = settings_in.website
+    if settings_in.industry is not None:
+        org.industry = settings_in.industry
+    if settings_in.company_size is not None:
+        org.company_size = settings_in.company_size
+    if settings_in.country is not None:
+        org.country = settings_in.country
+    if settings_in.timezone is not None:
+        org.timezone = settings_in.timezone
+    if settings_in.working_hours is not None:
+        org.working_hours = settings_in.working_hours
+    if settings_in.currency is not None:
+        org.currency = settings_in.currency
+
+    db.commit()
+    db.refresh(org)
+
+    return {
+        "id": org.id,
+        "name": org.name,
+        "description": org.description,
+        "logo_url": org.logo_url,
+        "website": org.website,
+        "industry": org.industry,
+        "company_size": org.company_size,
+        "country": org.country,
+        "timezone": org.timezone,
+        "working_hours": org.working_hours,
+        "currency": org.currency
+    }
+
+
+@router.delete("/{org_id}", status_code=status.HTTP_200_OK)
+@router.delete("", status_code=status.HTTP_200_OK)
+def delete_organization(
+    org_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    target_id = org_id
+    if target_id is None:
+        org = db.query(Organization).first()
+    else:
+        org = db.query(Organization).filter(Organization.id == target_id).first()
+
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Organization #{target_id} not found")
+
+    deleted_id = org.id
+    org_name = org.name
+
+    # 1. Gather linked Departments & Workspaces
+    deps = db.query(Department).filter(Department.organization_id == deleted_id).all()
+    dep_ids = [d.id for d in deps]
+
+    workspaces = db.query(Workspace).filter(Workspace.organization_id == deleted_id).all()
+    ws_ids = [w.id for w in workspaces]
+
+    # 2. Gather linked Projects
+    projects = db.query(Project).filter(
+        (Project.department_id.in_(dep_ids)) | (Project.workspace_id.in_(ws_ids))
+    ).all() if (dep_ids or ws_ids) else []
+    proj_ids = [p.id for p in projects]
+
+    # 3. Gather Teams
+    teams = db.query(Team).filter(Team.organization_id == deleted_id).all()
+    team_ids = [t.id for t in teams]
+
+    # 4. Delete Team Members
+    if team_ids:
+        db.query(TeamMember).filter(TeamMember.team_id.in_(team_ids)).delete(synchronize_session=False)
+
+    # 5. Delete Issues & Activity Logs
+    if proj_ids or team_ids:
+        query_filter = []
+        if proj_ids: query_filter.append(Issue.project_id.in_(proj_ids))
+        if team_ids: query_filter.append(Issue.team_id.in_(team_ids))
+        from sqlalchemy import or_
+        issues_to_del = db.query(Issue).filter(or_(*query_filter)).all()
+        issue_ids = [i.id for i in issues_to_del]
+
+        if issue_ids:
+            db.query(ActivityLog).filter(ActivityLog.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+            db.query(Issue).filter(Issue.id.in_(issue_ids)).delete(synchronize_session=False)
+
+    # 6. Delete Projects
+    if proj_ids:
+        db.query(Project).filter(Project.id.in_(proj_ids)).delete(synchronize_session=False)
+
+    # 7. Delete Workspaces
+    if ws_ids:
+        db.query(Workspace).filter(Workspace.id.in_(ws_ids)).delete(synchronize_session=False)
+
+    # 8. Delete Teams & Departments
+    if team_ids:
+        db.query(Team).filter(Team.id.in_(team_ids)).delete(synchronize_session=False)
+    if dep_ids:
+        db.query(Department).filter(Department.id.in_(dep_ids)).delete(synchronize_session=False)
+
+    # 9. Delete Organization
+    db.delete(org)
+    db.commit()
+
+    # 10. Guarantee at least 1 default organization exists
+    remaining_orgs = db.query(Organization).all()
+    if not remaining_orgs:
+        default_org = Organization(
+            name="BugFlow Technologies",
+            description="AI-Powered Engineering & Defect Intelligence Platform",
+            logo_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150"
+        )
+        db.add(default_org)
+        db.commit()
+        db.refresh(default_org)
+        
+        default_dept = Department(organization_id=default_org.id, name="Engineering", description="Core Backend & Frontend Teams")
+        db.add(default_dept)
+        db.commit()
+
+    return {
+        "success": True,
+        "message": f"Organization '{org_name}' and all associated resources have been permanently deleted.",
+        "deleted_org_id": deleted_id
+    }
+
 
 def check_org_access(org_id: int, db: Session, user: User) -> Organization:
     org = db.query(Organization).filter(Organization.id == org_id).first()
@@ -811,3 +992,69 @@ def get_organization_members(org_id: int, db: Session = Depends(get_db), current
         })
         
     return members
+
+
+class OrganizationProjectCreate(BaseModel):
+    name: str
+    project_key: Optional[str] = None
+    description: Optional[str] = None
+    department_id: Optional[int] = None
+    project_type: Optional[str] = "Software Development"
+    priority: Optional[str] = "Medium"
+    status: Optional[str] = "Active"
+
+
+@router.post("/{org_id}/projects", status_code=status.HTTP_201_CREATED)
+def create_organization_project(
+    org_id: int,
+    project_in: OrganizationProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = check_org_access(org_id, db, current_user)
+    
+    key = project_in.project_key
+    if not key or not key.strip():
+        clean_name = "".join([c for c in project_in.name if c.isalnum()]).upper()
+        key = clean_name[:4] if len(clean_name) >= 2 else "PRJ"
+
+    ws = db.query(Workspace).filter(Workspace.organization_id == org.id).first()
+    if not ws:
+        ws = Workspace(
+            organization_id=org.id,
+            name=f"{org.name} Workspace",
+            owner_id=current_user.id
+        )
+        db.add(ws)
+        db.commit()
+        db.refresh(ws)
+
+    new_project = Project(
+        name=project_in.name,
+        project_key=key.upper(),
+        description=project_in.description,
+        department_id=project_in.department_id,
+        workspace_id=ws.id,
+        owner_id=current_user.id,
+        project_type=project_in.project_type or "Software Development",
+        priority=project_in.priority or "Medium",
+        status=project_in.status or "Active"
+    )
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+
+    return {
+        "id": new_project.id,
+        "name": new_project.name,
+        "project_key": new_project.project_key,
+        "description": new_project.description,
+        "department_id": new_project.department_id,
+        "workspace_id": new_project.workspace_id,
+        "owner_id": new_project.owner_id,
+        "project_type": new_project.project_type,
+        "priority": new_project.priority,
+        "status": new_project.status,
+        "created_at": new_project.created_at.isoformat()
+    }
+

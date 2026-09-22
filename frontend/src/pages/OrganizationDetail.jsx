@@ -27,7 +27,10 @@ import {
   Globe, 
   DollarSign, 
   Search, 
-  Filter
+  Filter,
+  Trash2,
+  FolderPlus,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../services/api';
 import OrgSettingsModal from '../components/OrgSettingsModal';
@@ -51,7 +54,64 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
   // Modals & Drawer States
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [selectedSquad, setSelectedSquad] = useState(null);
+
+  const [newProjectData, setNewProjectData] = useState({
+    name: '',
+    project_key: '',
+    description: '',
+    department_id: '',
+    project_type: 'Software Development',
+    priority: 'Medium'
+  });
+  const [creatingProject, setCreatingProject] = useState(false);
+
+  const handleCreateProjectSubmit = async (e) => {
+    e.preventDefault();
+    if (!newProjectData.name.trim()) return;
+    setCreatingProject(true);
+    try {
+      await api.createOrgProject(orgId, {
+        ...newProjectData,
+        department_id: newProjectData.department_id ? parseInt(newProjectData.department_id) : null
+      });
+      setIsCreateProjectOpen(false);
+      setNewProjectData({ name: '', project_key: '', description: '', department_id: '', project_type: 'Software Development', priority: 'Medium' });
+      fetchOrganizationDetail();
+    } catch (err) {
+      alert("Failed to create project: " + err.message);
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
+  const handleDeleteProject = async (e, projectId, projectName) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete project "${projectName}" and all its issues? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.deleteProject(projectId);
+      fetchOrganizationDetail();
+    } catch (err) {
+      alert("Failed to delete project: " + err.message);
+    }
+  };
+
+  const handleDeleteIssue = async (e, issueId, issueTitle) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete issue "${issueTitle}" (#${issueId})?`)) {
+      return;
+    }
+    try {
+      await api.deleteIssue(issueId);
+      fetchOrgIssues();
+      fetchOrganizationDetail();
+    } catch (err) {
+      alert("Failed to delete issue: " + err.message);
+    }
+  };
 
   useEffect(() => {
     fetchOrganizationDetail();
@@ -182,8 +242,20 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
                   {org.plan}
                 </span>
               </div>
-              <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {org.description} • {org.industry} • {org.company_size} • {org.timezone}
+              <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span>{org.description} • {org.industry} • {org.company_size} • {org.timezone}</span>
+                {org.website && (
+                  <a 
+                    href={org.website.startsWith('http') ? org.website : `https://${org.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontWeight: 800, textDecoration: 'underline' }}
+                    title={`Open ${org.name} Demo Website`}
+                  >
+                    <Globe size={14} /> {org.website} <ExternalLink size={12} />
+                  </a>
+                )}
               </p>
             </div>
           </div>
@@ -395,9 +467,29 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
       {/* TAB 3: PROJECTS */}
       {activeTab === 'projects' && (
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem' }}>📁 Organization Projects Rollup</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>📁 Organization Projects Rollup</h3>
+            <button 
+              className="btn btn-primary"
+              onClick={() => setIsCreateProjectOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.5rem 1rem', background: '#10b981', border: 'none', color: '#fff', fontWeight: 800, borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              <FolderPlus size={16} /> + Create Project for {org.name}
+            </button>
+          </div>
+
           {projects.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No projects configured for this organization.</p>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <FolderPlus size={32} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+              <p>No projects configured for this organization.</p>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setIsCreateProjectOpen(true)}
+                style={{ marginTop: '0.75rem', background: '#10b981', border: 'none', color: '#fff', fontWeight: 700, padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                + Create First Project
+              </button>
+            </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
@@ -408,7 +500,7 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
                     <th style={{ padding: '0.75rem' }}>Health Status</th>
                     <th style={{ padding: '0.75rem' }}>Open Defects</th>
                     <th style={{ padding: '0.75rem' }}>Critical Defects</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Action</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -434,7 +526,18 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
                       </td>
                       <td style={{ padding: '0.85rem' }}>{proj.open_defect_count}</td>
                       <td style={{ padding: '0.85rem', color: proj.critical_defect_count > 0 ? '#ef4444' : 'inherit', fontWeight: proj.critical_defect_count > 0 ? 800 : 400 }}>{proj.critical_defect_count}</td>
-                      <td style={{ padding: '0.85rem', textAlign: 'right', color: '#10b981', fontWeight: 700 }}>View Issues →</td>
+                      <td style={{ padding: '0.85rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ color: '#10b981', fontWeight: 700 }}>View Issues →</span>
+                          <button 
+                            onClick={(e) => handleDeleteProject(e, proj.id, proj.name)}
+                            title="Delete Project"
+                            style={{ border: 'none', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, fontSize: '0.75rem' }}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -552,7 +655,18 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
                           <span className="badge badge-assigned">{iss.status}</span>
                         </td>
                         <td style={{ padding: '0.85rem' }}>{iss.priority}</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'right', color: '#10b981', fontWeight: 700 }}>Inspect →</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ color: '#10b981', fontWeight: 700 }}>Inspect →</span>
+                            <button 
+                              onClick={(e) => handleDeleteIssue(e, iss.id, iss.title)}
+                              title="Delete Issue"
+                              style={{ border: 'none', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '0.35rem 0.55rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700, fontSize: '0.75rem' }}
+                            >
+                              <Trash2 size={13} /> Delete
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -627,6 +741,121 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
         </div>
       )}
 
+      {/* Create Project Modal */}
+      {isCreateProjectOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
+          <div className="modal-card" style={{ maxWidth: '520px', width: '100%', padding: '1.75rem', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FolderPlus size={20} color="#10b981" />
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Create Project for {org.name}</h3>
+              </div>
+              <button onClick={() => setIsCreateProjectOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleCreateProjectSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Project Name *</label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="e.g. Core API Service, Mobile App"
+                  value={newProjectData.name}
+                  onChange={e => {
+                    const name = e.target.value;
+                    const autoKey = name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+                    setNewProjectData(prev => ({ ...prev, name, project_key: prev.project_key || autoKey }));
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Project Key</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    className="form-input"
+                    placeholder="e.g. CORE, MOB"
+                    value={newProjectData.project_key}
+                    onChange={e => setNewProjectData(prev => ({ ...prev, project_key: e.target.value.toUpperCase() }))}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Department</label>
+                  <select
+                    className="form-select"
+                    value={newProjectData.department_id}
+                    onChange={e => setNewProjectData(prev => ({ ...prev, department_id: e.target.value }))}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">(No Department)</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Description</label>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  placeholder="Describe the target goals and scope of this project..."
+                  value={newProjectData.description}
+                  onChange={e => setNewProjectData(prev => ({ ...prev, description: e.target.value }))}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Project Type</label>
+                  <select
+                    className="form-select"
+                    value={newProjectData.project_type}
+                    onChange={e => setNewProjectData(prev => ({ ...prev, project_type: e.target.value }))}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="Software Development">Software Development</option>
+                    <option value="Infrastructure & Cloud">Infrastructure & Cloud</option>
+                    <option value="Quality Assurance">Quality Assurance</option>
+                    <option value="Security & Compliance">Security & Compliance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700, fontSize: '0.85rem' }}>Priority</label>
+                  <select
+                    className="form-select"
+                    value={newProjectData.priority}
+                    onChange={e => setNewProjectData(prev => ({ ...prev, priority: e.target.value }))}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsCreateProjectOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={creatingProject} style={{ background: '#10b981', borderColor: '#10b981', fontWeight: 800 }}>
+                  {creatingProject ? 'Creating...' : 'Create Project'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Pre-scoped Report Issue Modal */}
       <ReportIssueModal
         isOpen={isReportModalOpen}
@@ -644,7 +873,9 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
       <OrgSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        onSaved={fetchOrganizationDetail}
+        organization={org}
+        onUpdated={fetchOrganizationDetail}
+        onDeleted={() => onNavigate ? onNavigate('org') : (window.location.href = '/#org')}
       />
 
     </div>

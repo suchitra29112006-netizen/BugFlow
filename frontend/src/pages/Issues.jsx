@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { Bug, Search, Plus, Sparkles, FolderKanban, AlertTriangle, Check, Loader2, Wand2, Globe2, Link2, Mic, MicOff, Kanban, List, Tag, Calendar, AlertCircle, Layers, CheckSquare, Square, Zap, HelpCircle } from 'lucide-react';
+import { Bug, Search, Plus, Sparkles, FolderKanban, AlertTriangle, Check, Loader2, Wand2, Globe2, Link2, Mic, MicOff, Kanban, List, Tag, Calendar, AlertCircle, Layers, CheckSquare, Square, Zap, HelpCircle, Trash2 } from 'lucide-react';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { DragDropUpload } from '../components/DragDropUpload';
 import { ExplainWhyModal } from '../components/ExplainWhyModal';
@@ -18,6 +18,17 @@ export const Issues = ({ projects, selectedProjectId, selectedSprintId, onSelect
   const [loadingTriage, setLoadingTriage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  const handleDeleteIssue = async (id, title, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete issue "${title}" (#${id})?`)) return;
+    try {
+      await api.deleteIssue(id);
+      fetchIssues();
+    } catch (err) {
+      alert(err.message || 'Failed to delete issue.');
+    }
+  };
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [projectIdFilter, setProjectIdFilter] = useState(selectedProjectId || '');
@@ -488,6 +499,13 @@ export const Issues = ({ projects, selectedProjectId, selectedSprintId, onSelect
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                   <span className={`badge badge-${iss.severity.toLowerCase()}`}>{iss.severity}</span>
                   <span className={`badge badge-${iss.status.toLowerCase().replace(' ', '-')}`}>{iss.status}</span>
+                  <button
+                    onClick={(e) => handleDeleteIssue(iss.id, iss.title, e)}
+                    title="Delete Issue"
+                    style={{ border: 'none', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', padding: '0.35rem 0.5rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))}

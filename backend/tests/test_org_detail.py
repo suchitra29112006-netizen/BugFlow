@@ -156,3 +156,72 @@ def test_post_organization_issue_invalid_org(auth_headers):
     res = client.post("/api/v1/organizations/99999/issues", json=payload, headers=auth_headers)
     assert res.status_code == 404
     assert res.json()["detail"] == "Organization #99999 not found"
+
+def test_post_organization_project_scoped(auth_headers):
+    payload = {
+        "name": "Org Payment Gateway Microservice",
+        "project_key": "PAY",
+        "description": "PCI-compliant payment processing microservice for NovaUI",
+        "project_type": "Software Development",
+        "priority": "High"
+    }
+    res = client.post("/api/v1/organizations/1/projects", json=payload, headers=auth_headers)
+    assert res.status_code == 201
+    proj = res.json()
+    assert proj["name"] == payload["name"]
+    assert proj["project_key"] == "PAY"
+
+def test_delete_project_and_issue_workflow(auth_headers):
+    # 1. Create issue
+    issue_payload = {
+        "title": "Issue to be deleted",
+        "description": "Transient bug report",
+        "severity": "Low",
+        "priority": "Low",
+        "project_id": 1
+    }
+    res_iss = client.post("/api/v1/organizations/1/issues", json=issue_payload, headers=auth_headers)
+    assert res_iss.status_code == 201
+    iss_id = res_iss.json()["id"]
+
+    # 2. Delete issue
+    del_iss = client.delete(f"/api/issues/{iss_id}", headers=auth_headers)
+    assert del_iss.status_code == 204
+
+    # 3. Create temp project
+    proj_payload = {
+        "name": "Temp Project to Delete",
+        "project_key": "TMP",
+        "description": "Temporary project"
+    }
+    res_prj = client.post("/api/v1/organizations/1/projects", json=proj_payload, headers=auth_headers)
+    assert res_prj.status_code == 201
+    prj_id = res_prj.json()["id"]
+
+    # 4. Delete temp project
+    del_prj = client.delete(f"/api/projects/{prj_id}", headers=auth_headers)
+    assert del_prj.status_code == 204
+
+def test_delete_organization_workflow(auth_headers):
+    # 1. Create a dummy organization to delete
+    wizard_payload = {
+        "name": "Disposable Org Inc",
+        "description": "Transient test org to be deleted",
+        "industry": "Software / SaaS",
+        "company_size": "1-10",
+        "website": "https://disposable.test"
+    }
+    res_wizard = client.post("/api/v1/organizations/wizard", json=wizard_payload, headers=auth_headers)
+    assert res_wizard.status_code == 201
+    org_id = res_wizard.json()["organization_id"]
+
+    # 2. Delete the newly created organization
+    res_del = client.delete(f"/api/v1/organizations/{org_id}", headers=auth_headers)
+    assert res_del.status_code == 200
+    assert res_del.json()["success"] is True
+    assert res_del.json()["deleted_org_id"] == org_id
+
+    # 3. Verify accessing deleted organization returns 404
+    res_get = client.get(f"/api/v1/organizations/{org_id}", headers=auth_headers)
+    assert res_get.status_code == 404
+

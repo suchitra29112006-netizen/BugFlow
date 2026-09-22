@@ -35,8 +35,19 @@ class Department(Base):
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
+    code = Column(String(50), nullable=True)
     description = Column(Text, nullable=True)
+    department_type = Column(String(100), default="Engineering") # Engineering, QA & Quality, Product & Design, DevOps & Security, Data & AI, Operations, Other
+    lead_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    timezone = Column(String(100), default="UTC (Coordinated Universal Time)")
+    working_hours = Column(String(100), default="09:00 - 18:00 MON-FRI")
+    default_sla_policy_id = Column(Integer, nullable=True)
+    status = Column(String(50), default="Active") # Active, Archived
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="departments")
+    lead = relationship("User", foreign_keys=[lead_id])
     teams = relationship("Team", back_populates="department")
+    projects = relationship("Project", back_populates="department")
+    goals = relationship("Goal", back_populates="department")

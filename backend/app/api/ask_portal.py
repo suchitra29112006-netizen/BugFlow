@@ -32,11 +32,27 @@ def submit_external_request(payload: ExternalSubmitSchema, db: Session = Depends
     sev_str = severity_pred.severity.value if hasattr(severity_pred.severity, 'value') else str(severity_pred.severity)
     confidence = float(getattr(severity_pred, 'confidence', 85.0))
 
+    text_lower = (payload.title + " " + payload.description).lower()
+    if any(w in text_lower for w in ["sec", "auth", "token", "jwt", "permission", "xss", "csrf", "hack"]):
+        dept_name = "DevOps & Security"
+        team_name = "Security Engineering"
+    elif any(w in text_lower for w in ["test", "qa", "bug", "reproduce", "automation", "e2e"]):
+        dept_name = "QA & Quality"
+        team_name = "Release Validation"
+    elif any(w in text_lower for w in ["ux", "ui", "button", "design", "css", "layout", "mobile"]):
+        dept_name = "Product & Design"
+        team_name = "Design Systems"
+    else:
+        dept_name = "Engineering"
+        team_name = "Backend Engineering" if any(w in text_lower for w in ["api", "db", "server", "endpoint", "sql"]) else "Frontend Experience"
+
     triage_info = {
         "clean_title": payload.title.strip(),
         "severity_suggestion": sev_str,
         "confidence_score": confidence,
-        "suggested_team": "Backend Engineering" if any(w in payload.description.lower() for w in ["api", "auth", "backend", "db", "server"]) else "Frontend Experience",
+        "suggested_department": dept_name,
+        "suggested_squad": team_name,
+        "suggested_team": team_name,
         "duplicate_matches": duplicates[:2] if duplicates else []
     }
 

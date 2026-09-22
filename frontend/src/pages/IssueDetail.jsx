@@ -351,12 +351,10 @@ export const IssueDetail = ({ issueId, onBack }) => {
             </button>
           )}
 
-          {(user?.role === 'Admin' || user?.id === issue.reporter_id) && (
-            <button className="btn btn-danger" onClick={handleDeleteIssue}>
-              <Trash2 size={16} />
-              Delete Issue
-            </button>
-          )}
+          <button className="btn btn-danger" onClick={handleDeleteIssue}>
+            <Trash2 size={16} />
+            Delete Issue
+          </button>
         </div>
       </div>
 
