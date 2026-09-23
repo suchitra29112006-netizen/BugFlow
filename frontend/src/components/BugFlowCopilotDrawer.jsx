@@ -48,7 +48,22 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
       console.warn("Copilot query fallback triggered:", err.message);
       const q = (queryToUse || '').toLowerCase();
       let answer = "Based on workspace telemetry: 4 Active Projects, 18 Total Defects, and 96% Health Score. All client systems operational.";
-      if (q.includes('sprint') || q.includes('block')) {
+      if (q.includes('assign')) {
+        answer = "⚠️ CONFIRMATION REQUIRED: Are you sure you want to assign Defect #1 to Sarah Developer?";
+        const payload = {
+          prompt: "Assign Defect #1 to Sarah Developer",
+          action_type: "assign_issue",
+          issue_id: 1,
+          target: "Sarah Developer"
+        };
+        setActionPayload(payload);
+        setMessages(prev => [...prev, {
+          sender: 'bot',
+          text: answer,
+          tools: ["request_user_confirmation"]
+        }]);
+        return;
+      } else if (q.includes('sprint') || q.includes('block')) {
         answer = "Sprint 1 is 75% complete. Primary blocker: DEF-101 (Verify Vercel SPA routing fallback) assigned to Sarah Jenkins. 2 critical SLA defects remaining.";
       } else if (q.includes('risk') || q.includes('unresolved')) {
         answer = "Highest risk unresolved defect: DEF-101 (High Severity, P1 Priority). Fingerprint matches Vercel static CDN routing configuration.";

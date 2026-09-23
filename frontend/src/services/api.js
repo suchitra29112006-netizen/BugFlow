@@ -336,7 +336,19 @@ export const api = {
       const q = (query || '').toLowerCase();
       let answer = "Based on current workspace telemetry: 4 Active Projects, 18 Total Defects, and 96% Health Score. All client systems are operational!";
       
-      if (q.includes('sprint') || q.includes('block')) {
+      if (q.includes('assign')) {
+        return {
+          answer: "⚠️ CONFIRMATION REQUIRED: Are you sure you want to assign Defect #1 to Sarah Developer?",
+          tools_used: ["request_user_confirmation"],
+          action_required: true,
+          action_payload: {
+            prompt: "Assign Defect #1 to Sarah Developer",
+            action_type: "assign_issue",
+            issue_id: 1,
+            target: "Sarah Developer"
+          }
+        };
+      } else if (q.includes('sprint') || q.includes('block')) {
         answer = "Sprint 1 (Production Release) is 75% complete. Primary blocker: DEF-101 (Verify Vercel SPA routing fallback) assigned to Sarah Jenkins. 2 critical SLA defects remaining.";
       } else if (q.includes('risk') || q.includes('unresolved')) {
         answer = "Highest risk unresolved defect: DEF-101 (High Severity, P1 Priority). Fingerprint matches Vercel static CDN routing configuration.";
