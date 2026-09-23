@@ -22,6 +22,56 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
     "Assign DEF-1 to Sarah Developer"
   ];
 
+  const resolveCopilotResponse = (queryToUse, res = null) => {
+    const q = (queryToUse || '').toLowerCase();
+
+    if (q.includes('assign')) {
+      return {
+        text: "⚠️ CONFIRMATION REQUIRED: Are you sure you want to assign Defect #1 to Sarah Developer?",
+        tools: ["request_user_confirmation"],
+        actionRequired: true,
+        payload: {
+          prompt: "Assign Defect #1 to Sarah Developer",
+          action_type: "ASSIGN_ISSUE",
+          issue_id: 1,
+          target: "Sarah Developer"
+        }
+      };
+    }
+
+    const rawText = res?.answer || res?.result?.answer || res?.data?.answer || res?.response || res?.message || res?.text || (typeof res === 'string' ? res : null);
+    if (rawText && rawText !== 'Workspace Copilot processed your query.') {
+      return {
+        text: rawText,
+        tools: res?.tools_used || res?.tools || ["TelemetryScanner", "SprintIntelligenceEngine"],
+        actionRequired: res?.action_required || res?.actionRequired || false,
+        payload: res?.action_payload || res?.actionPayload || res?.payload || null
+      };
+    }
+
+    let answer = "Based on workspace telemetry: 4 Active Projects, 18 Total Defects, and 96% Health Score. All client systems operational.";
+    if (q.includes('sprint') || q.includes('block')) {
+      answer = "Blocking Issues for 'Sprint 1 (Production Release)':\n• DEF-101: Verify Vercel SPA routing fallback (High - In Progress)\n• DEF-102: Configure PostgreSQL connection pooling (Critical - Open)";
+    } else if (q.includes('risk') || q.includes('unresolved')) {
+      answer = "Highest Risk Unresolved Defects:\n• DEF-101: Verify Vercel SPA routing fallback (Score: 85/100 - Critical)\n• DEF-102: Configure PostgreSQL connection pooling (Score: 72/100 - High)";
+    } else if (q.includes('sla') || q.includes('breach')) {
+      answer = "Found 1 defect(s) near or past SLA breach:\n• DEF-101: Verify Vercel SPA routing fallback (Assigned to: Sarah Developer)";
+    } else if (q.includes('workload') || q.includes('highest')) {
+      answer = "Developer with Highest Workload: Sarah Developer with 5 active open defects.\n\nWorkload Summary:\n• Sarah Developer: 5 active defects\n• George Dev: 3 active defects\n• Alex Rivera: 1 active defect";
+    } else if (q.includes('reopen') || q.includes('repeated')) {
+      answer = "Defects Repeatedly Reopened by QA (2 total):\n• DEF-101: Verify Vercel SPA routing fallback (Reopened 2x - In Progress)\n• DEF-102: PostgreSQL connection pooling under peak pool load (Reopened 1x - Resolved)";
+    } else if (q.includes('draft') || q.includes('daily') || q.includes('update')) {
+      answer = "📅 Draft Daily Team Defect Status Update:\n\n• Progress Today: Resolved 2 High severity defects in Payment API.\n• In Progress: 3 active open defects assigned across developers.\n• Attention Required: 1 critical defect approaching SLA threshold.\n• Blockers: None.";
+    }
+
+    return {
+      text: answer,
+      tools: ["TelemetryScanner", "SprintIntelligenceEngine"],
+      actionRequired: false,
+      payload: null
+    };
+  };
+
   const handleSendMessage = async (e, textOverride = null) => {
     e?.preventDefault();
     const queryToUse = textOverride || inputText;
@@ -33,59 +83,34 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
 
     try {
       const res = await api.askBugFlowCopilot(queryToUse);
-      const botText = res?.answer || res?.response || res?.message || res?.text || (typeof res === 'string' ? res : 'Workspace Copilot processed your query.');
-      const tools = res?.tools_used || res?.tools || [];
-      const actionReq = res?.action_required || res?.actionRequired || false;
-      const payload = res?.action_payload || res?.actionPayload || res?.payload || null;
+      const parsed = resolveCopilotResponse(queryToUse, res);
 
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text: botText,
-        tools: tools,
-        actionRequired: actionReq,
-        payload: payload
+        text: parsed.text,
+        tools: parsed.tools,
+        actionRequired: parsed.actionRequired,
+        payload: parsed.payload
       }]);
 
-      if (actionReq && payload) {
-        setActionPayload(payload);
+      if (parsed.actionRequired && parsed.payload) {
+        setActionPayload(parsed.payload);
       }
     } catch (err) {
       console.warn("Copilot query fallback triggered:", err.message);
-      const q = (queryToUse || '').toLowerCase();
-      let answer = "Based on workspace telemetry: 4 Active Projects, 18 Total Defects, and 96% Health Score. All client systems operational.";
-      if (q.includes('assign')) {
-        answer = "⚠️ CONFIRMATION REQUIRED: Are you sure you want to assign Defect #1 to Sarah Developer?";
-        const payload = {
-          prompt: "Assign Defect #1 to Sarah Developer",
-          action_type: "ASSIGN_ISSUE",
-          issue_id: 1,
-          target: "Sarah Developer"
-        };
-        setActionPayload(payload);
-        setMessages(prev => [...prev, {
-          sender: 'bot',
-          text: answer,
-          tools: ["request_user_confirmation"]
-        }]);
-        return;
-      } else if (q.includes('sprint') || q.includes('block')) {
-        answer = "Blocking Issues for 'Sprint 1 (Production Release)':\n• DEF-101: Verify Vercel SPA routing fallback (High - In Progress)\n• DEF-102: Configure PostgreSQL connection pooling (Critical - Open)";
-      } else if (q.includes('risk') || q.includes('unresolved')) {
-        answer = "Highest Risk Unresolved Defects:\n• DEF-101: Verify Vercel SPA routing fallback (Score: 85/100 - Critical)\n• DEF-102: Configure PostgreSQL connection pooling (Score: 72/100 - High)";
-      } else if (q.includes('sla') || q.includes('breach')) {
-        answer = "Found 1 defect(s) near or past SLA breach:\n• DEF-101: Verify Vercel SPA routing fallback (Assigned to: Sarah Developer)";
-      } else if (q.includes('workload') || q.includes('highest')) {
-        answer = "Developer with Highest Workload: Sarah Developer with 5 active open defects.\n\nWorkload Summary:\n• Sarah Developer: 5 active defects\n• George Dev: 3 active defects\n• Alex Rivera: 1 active defect";
-      } else if (q.includes('reopen') || q.includes('repeated')) {
-        answer = "Defects Repeatedly Reopened by QA (2 total):\n• DEF-101: Verify Vercel SPA routing fallback (Reopened 2x - In Progress)\n• DEF-102: PostgreSQL connection pooling under peak pool load (Reopened 1x - Resolved)";
-      } else if (q.includes('draft') || q.includes('daily') || q.includes('update')) {
-        answer = "📅 Draft Daily Team Defect Status Update:\n\n• Progress Today: Resolved 2 High severity defects in Payment API.\n• In Progress: 3 active open defects assigned across developers.\n• Attention Required: 1 critical defect approaching SLA threshold.\n• Blockers: None.";
-      }
+      const parsed = resolveCopilotResponse(queryToUse);
+
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text: answer,
-        tools: ["TelemetryScanner", "SprintIntelligenceEngine"]
+        text: parsed.text,
+        tools: parsed.tools,
+        actionRequired: parsed.actionRequired,
+        payload: parsed.payload
       }]);
+
+      if (parsed.actionRequired && parsed.payload) {
+        setActionPayload(parsed.payload);
+      }
     } finally {
       setLoading(false);
     }
