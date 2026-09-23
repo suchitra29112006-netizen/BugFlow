@@ -10,7 +10,7 @@ export const ActivityTimeline = ({ issueId }) => {
     const fetchLogs = async () => {
       try {
         const data = await api.getIssueActivityLog(issueId);
-        setLogs(data);
+        setLogs(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch activity log:", err);
       } finally {

@@ -63,7 +63,7 @@ export const Dashboard = ({ onNavigateToIssues, onSelectIssue }) => {
         </div>
 
         {/* Gamification Badges Box */}
-        {gamification && gamification.badges?.length > 0 && (
+        {gamification && Array.isArray(gamification?.badges) && gamification.badges.length > 0 && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {gamification.badges.map((b, i) => (
               <div key={i} style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }} title={b.description}>

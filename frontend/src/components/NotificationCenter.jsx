@@ -9,7 +9,7 @@ export const NotificationCenter = ({ onSelectIssue }) => {
   const fetchNotifications = async () => {
     try {
       const data = await api.getNotifications();
-      setNotifications(data);
+      setNotifications(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
     }
