@@ -33,16 +33,21 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
 
     try {
       const res = await api.askBugFlowCopilot(queryToUse);
+      const botText = res?.answer || res?.response || res?.message || res?.text || (typeof res === 'string' ? res : 'Workspace Copilot processed your query.');
+      const tools = res?.tools_used || res?.tools || [];
+      const actionReq = res?.action_required || res?.actionRequired || false;
+      const payload = res?.action_payload || res?.actionPayload || res?.payload || null;
+
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text: res.answer,
-        tools: res.tools_used || [],
-        actionRequired: res.action_required,
-        payload: res.action_payload
+        text: botText,
+        tools: tools,
+        actionRequired: actionReq,
+        payload: payload
       }]);
 
-      if (res.action_required && res.action_payload) {
-        setActionPayload(res.action_payload);
+      if (actionReq && payload) {
+        setActionPayload(payload);
       }
     } catch (err) {
       console.warn("Copilot query fallback triggered:", err.message);
