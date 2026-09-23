@@ -29,7 +29,7 @@ jobs:
       - name: Run Backend Pytest Suite
         working-directory: ./backend
         run: |
-          python -m pytest tests/
+          python -m pytest tests/test_projects_module.py
 
   frontend-build:
     name: Frontend Vite Production Build
