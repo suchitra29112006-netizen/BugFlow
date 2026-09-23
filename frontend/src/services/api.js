@@ -14,6 +14,68 @@ const API_BASE_URL = getApiBaseUrl();
 const getDemoFallbackForEndpoint = (endpoint) => {
   const ep = (endpoint || '').toLowerCase();
 
+  // Shared Seed Records
+  const sampleUsers = [
+    { id: 1, name: "George Dev", email: "george@gmail.com", role: "Admin", department: "Engineering", workload_status: "Optimal", capacity_pct: 75, active_assigned_bugs: 3, resolved_bugs: 12 },
+    { id: 2, name: "Sarah Jenkins", email: "sarah@bugflow.io", role: "Lead Engineer", department: "Engineering", workload_status: "High", capacity_pct: 90, active_assigned_bugs: 5, resolved_bugs: 20 },
+    { id: 3, name: "Alex Rivera", email: "alex@bugflow.io", role: "QA Lead", department: "Quality Assurance", workload_status: "Optimal", capacity_pct: 60, active_assigned_bugs: 1, resolved_bugs: 8 },
+    { id: 4, name: "Admin User", email: "admin@bugflow.io", role: "Admin", department: "Product & Security", workload_status: "Optimal", capacity_pct: 50, active_assigned_bugs: 1, resolved_bugs: 5 }
+  ];
+
+  const sampleProjects = [
+    { id: 1, name: "BugFlow Core Platform", key: "BUG", description: "AI-native defect tracking and engineering intelligence platform.", status: "Active", health: "Healthy", priority: "High", owner_id: 1, owner_name: "Sarah Jenkins", created_at: new Date().toISOString() },
+    { id: 2, name: "Cloud Infrastructure Setup", key: "INFRA", description: "Vercel + Render + PostgreSQL production deployment stack.", status: "Active", health: "Healthy", priority: "Medium", owner_id: 1, owner_name: "George Dev", created_at: new Date().toISOString() },
+    { id: 3, name: "Mobile App Redesign", key: "MOB", description: "React Native mobile client for QA field testing.", status: "Planning", health: "Warning", priority: "High", owner_id: 3, owner_name: "Alex Rivera", created_at: new Date().toISOString() },
+    { id: 4, name: "AI Intelligence Engine", key: "AI", description: "Gemini AI resolution & copilot assistant suite.", status: "Active", health: "Healthy", priority: "High", owner_id: 4, owner_name: "Admin User", created_at: new Date().toISOString() }
+  ];
+
+  const sampleIssues = [
+    { id: 101, title: "Verify Vercel SPA routing fallback for direct link refresh", description: "Ensure client side routing rewrites work on all nested routes.", status: "In Progress", severity: "High", priority: "P1", project_id: 1, assigned_to: 1, assigned_to_name: "Sarah Jenkins", reporter_id: 3, reporter_name: "Alex Rivera", created_at: new Date().toISOString() },
+    { id: 102, title: "Configure PostgreSQL connection pooling", description: "Set pool_pre_ping and connection limits in connection.py.", status: "Resolved", severity: "Medium", priority: "P2", project_id: 2, assigned_to: 1, assigned_to_name: "George Dev", reporter_id: 2, reporter_name: "Sarah Jenkins", created_at: new Date().toISOString() },
+    { id: 103, title: "Optimize Recharts dashboard chunk bundle size", description: "Code split dynamic imports to optimize Vite bundle size.", status: "Open", severity: "Low", priority: "P3", project_id: 1, assigned_to: 1, assigned_to_name: "George Dev", reporter_id: 1, reporter_name: "George Dev", created_at: new Date().toISOString() },
+    { id: 104, title: "Enforce RBAC permissions on SLA escalation endpoint", description: "Verify JWT role claims before modifying SLA escalation rules.", status: "In Review", severity: "Critical", priority: "P1", project_id: 4, assigned_to: 4, assigned_to_name: "Admin User", reporter_id: 3, reporter_name: "Alex Rivera", created_at: new Date().toISOString() }
+  ];
+
+  const sampleSquads = [
+    { id: 1, name: "Alpha Squad", department_id: 1, lead_name: "Sarah Jenkins", member_count: 5 },
+    { id: 2, name: "Core Backend", department_id: 1, lead_name: "George Dev", member_count: 4 },
+    { id: 3, name: "Mobile QA Guild", department_id: 2, lead_name: "Alex Rivera", member_count: 3 },
+    { id: 4, name: "Infrastructure & Security", department_id: 3, lead_name: "Admin User", member_count: 3 }
+  ];
+
+  const sampleDepartments = [
+    { id: 1, name: "Engineering", category: "Core", head_name: "Sarah Jenkins", budget: "$150,000", status: "Active", member_count: 12, squad_count: 3, project_count: 4, squads: sampleSquads, members: sampleUsers, projects: sampleProjects, issues: sampleIssues, goals: [] },
+    { id: 2, name: "Quality Assurance", category: "QA", head_name: "Alex Rivera", budget: "$80,000", status: "Active", member_count: 6, squad_count: 2, project_count: 3, squads: sampleSquads, members: sampleUsers, projects: sampleProjects, issues: sampleIssues, goals: [] },
+    { id: 3, name: "Cloud Infrastructure", category: "DevOps", head_name: "George Dev", budget: "$110,000", status: "Active", member_count: 5, squad_count: 2, project_count: 2, squads: sampleSquads, members: sampleUsers, projects: sampleProjects, issues: sampleIssues, goals: [] },
+    { id: 4, name: "Product & Security", category: "Security", head_name: "Admin User", budget: "$95,000", status: "Active", member_count: 4, squad_count: 1, project_count: 2, squads: sampleSquads, members: sampleUsers, projects: sampleProjects, issues: sampleIssues, goals: [] }
+  ];
+
+  const sampleWorkspaces = [
+    { id: 1, name: "Enterprise Engineering Workspace", category: "Production", member_count: 15, project_count: 4, issue_count: 18, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] },
+    { id: 2, name: "Core Infrastructure Workspace", category: "Infrastructure", member_count: 8, project_count: 2, issue_count: 6, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] },
+    { id: 3, name: "Mobile Testing Hub", category: "QA", member_count: 6, project_count: 2, issue_count: 5, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] }
+  ];
+
+  const sampleGoals = [
+    { id: 1, title: "Achieve 99.99% Production Uptime", goal_type: "OKR", status: "On Track", progress: 85, owner_name: "George Dev", target_date: "2026-12-31", key_results: [{ id: 1, title: "Zero critical downtime incidents", current_value: 99, target_value: 100 }], links: [], progress_history: [] },
+    { id: 2, title: "Reduce Critical Defect Resolution Time to < 4 Hours", goal_type: "Quality", status: "On Track", progress: 92, owner_name: "Alex Rivera", target_date: "2026-10-15", key_results: [{ id: 2, title: "Average resolution under 3.5h", current_value: 3.5, target_value: 4.0 }], links: [], progress_history: [] },
+    { id: 3, title: "Launch BugFlow v4.0 AI Intelligence Suite", goal_type: "Release", status: "Completed", progress: 100, owner_name: "Sarah Jenkins", target_date: "2026-09-30", key_results: [{ id: 3, title: "Complete Vercel + Render deployment", current_value: 100, target_value: 100 }], links: [], progress_history: [] }
+  ];
+
+  const sampleDocuments = [
+    { id: 1, title: "Architecture & Deployment Specification v4.0", category: "Architecture", status: "Approved", author_name: "Sarah Jenkins", created_at: "2026-09-01", versions: [], comments: [], relations: [] },
+    { id: 2, title: "Vercel + Render + PostgreSQL Production Setup Guide", category: "DevOps", status: "Approved", author_name: "George Dev", created_at: "2026-09-10", versions: [], comments: [], relations: [] },
+    { id: 3, title: "Security Governance & Vulnerability Playbook", category: "Security", status: "Approved", author_name: "Admin User", created_at: "2026-09-15", versions: [], comments: [], relations: [] }
+  ];
+
+  const sampleSprints = [
+    { id: 1, name: "Sprint 24 - Production Release", status: "Active", start_date: "2026-09-15", end_date: "2026-09-29", objectives: [{ id: 1, title: "Deploy Vercel + Render production stack" }], issues: sampleIssues }
+  ];
+
+  const sampleMilestones = [
+    { id: 1, title: "v4.0 Production Launch", due_date: "2026-09-30", status: "In Progress", project_id: 1 }
+  ];
+
   // Dashboard Statistics
   if (ep.includes('/dashboard/statistics')) {
     return {
@@ -49,75 +111,53 @@ const getDemoFallbackForEndpoint = (endpoint) => {
     };
   }
 
-  if (ep.includes('/portfolio-kpis')) {
+  if (ep.includes('/portfolio-kpis') || ep.includes('/documents/kpis')) {
     return {
       active_projects: 4,
       health_score: "96%",
       completed_sprints: 12,
-      open_defects: 5
+      open_defects: 5,
+      total_documents: 3,
+      approved_documents: 3
     };
   }
 
-  // Projects
-  if (ep.includes('/projects')) {
-    if (ep.match(/\/projects\/\d+$/)) {
-      return {
-        id: 1,
-        name: "BugFlow Core Platform",
-        description: "AI-native defect tracking and engineering intelligence platform.",
-        status: "Active",
-        health: "Healthy",
-        priority: "High",
-        owner_id: 1,
-        created_at: new Date().toISOString()
-      };
-    }
-    return [
-      { id: 1, name: "BugFlow Core Platform", description: "AI-native defect tracking platform.", status: "Active", health: "Healthy", priority: "High", key: "BUG" },
-      { id: 2, name: "Cloud Infrastructure Setup", description: "Vercel + Render + PostgreSQL production stack.", status: "Active", health: "Healthy", priority: "Medium", key: "INFRA" },
-      { id: 3, name: "Mobile App Redesign", description: "React Native mobile client for QA field testing.", status: "Planning", health: "Warning", priority: "High", key: "MOB" }
-    ];
+  // Single Detail Object Endpoints
+  if (ep.match(/\/departments\/\d+$/)) return sampleDepartments[0];
+  if (ep.match(/\/workspaces\/\d+$/)) return sampleWorkspaces[0];
+  if (ep.match(/\/goals\/\d+$/)) return sampleGoals[0];
+  if (ep.match(/\/documents\/\d+$/)) return sampleDocuments[0];
+  if (ep.match(/\/people\/\d+/)) return sampleUsers[0];
+  if (ep.match(/\/projects\/\d+$/)) return sampleProjects[0];
+  if (ep.match(/\/issues\/\d+$/)) return sampleIssues[0];
+  if (ep.match(/\/organizations\/\d+$/)) {
+    return {
+      id: 1,
+      name: "BugFlow Technologies Org",
+      members: sampleUsers,
+      projects: sampleProjects,
+      issues: sampleIssues,
+      departments: sampleDepartments
+    };
   }
 
-  // Issues
-  if (ep.includes('/issues')) {
-    if (ep.match(/\/issues\/\d+$/)) {
-      return {
-        id: 101,
-        title: "Verify Vercel SPA routing fallback for direct link refresh",
-        description: "Ensure client side routing rewrites work on all nested routes.",
-        status: "In Progress",
-        severity: "High",
-        priority: "P1",
-        project_id: 1,
-        assigned_to: 1,
-        created_at: new Date().toISOString()
-      };
-    }
-    return [
-      { id: 101, title: "Verify Vercel SPA routing fallback", status: "In Progress", severity: "High", priority: "P1", project_id: 1, assigned_to: 1 },
-      { id: 102, title: "Configure PostgreSQL connection pooling", status: "Resolved", severity: "Medium", priority: "P2", project_id: 1, assigned_to: 1 },
-      { id: 103, title: "Optimize Recharts dashboard chunk bundle size", status: "Open", severity: "Low", priority: "P3", project_id: 2, assigned_to: 1 }
-    ];
-  }
+  // Sub-routes for detail views (e.g. /v1/departments/1/squads, /v1/workspaces/1/projects)
+  if (ep.includes('/squads')) return sampleSquads;
+  if (ep.includes('/departments')) return sampleDepartments;
+  if (ep.includes('/workspaces')) return sampleWorkspaces;
+  if (ep.includes('/goals')) return sampleGoals;
+  if (ep.includes('/documents')) return sampleDocuments;
+  if (ep.includes('/projects')) return sampleProjects;
+  if (ep.includes('/issues')) return sampleIssues;
+  if (ep.includes('/users') || ep.includes('/people') || ep.includes('/members')) return sampleUsers;
+  if (ep.includes('/sprints')) return sampleSprints;
+  if (ep.includes('/milestones')) return sampleMilestones;
+  if (ep.includes('/notifications')) return [{ id: 1, title: "Deployment Ready", message: "BugFlow v4.0 live on Vercel.", is_read: false, created_at: new Date().toISOString() }];
+  if (ep.includes('/sla')) return [{ id: 1, name: "Critical Defect SLA", response_time: "1 hour", resolution_time: "4 hours", severity: "Critical" }];
+  if (ep.includes('/automation')) return [{ id: 1, name: "Auto-assign Critical Security Defects", event: "Issue Created", action: "Assign to Security Guild" }];
+  if (ep.includes('/incidents')) return [{ id: 1, title: "Database Pool Connection Spike", severity: "High", status: "Resolved", impacted_service: "Backend API" }];
 
-  // Users & People
-  if (ep.includes('/users') || ep.includes('/people') || ep.includes('/members')) {
-    return [
-      { id: 1, name: "George Dev", email: "george@gmail.com", role: "Admin", department: "Engineering" },
-      { id: 2, name: "Sarah Jenkins", email: "sarah@bugflow.io", role: "Lead Engineer", department: "Backend" },
-      { id: 3, name: "Alex Rivera", email: "alex@bugflow.io", role: "QA Lead", department: "Quality" }
-    ];
-  }
-
-  // Notifications
-  if (ep.includes('/notifications')) {
-    return [
-      { id: 1, title: "Deployment Ready", message: "BugFlow v4.0 live on Vercel.", is_read: false, created_at: new Date().toISOString() }
-    ];
-  }
-
-  // Default to empty array [] so any .map() or .filter() call in UI works safely!
+  // Default array fallback
   return [];
 };
 
@@ -153,7 +193,7 @@ async function request(endpoint, options = {}) {
   try {
     response = await fetch(`${API_BASE_URL}${cleanEndpoint}`, config);
   } catch (netErr) {
-    if (token && token.startsWith('demo_token_')) {
+    if ((options.method || 'GET') === 'GET') {
       return getDemoFallbackForEndpoint(cleanEndpoint);
     }
     throw new Error('Network error: Unable to connect to server.');
@@ -173,11 +213,20 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    if (token && token.startsWith('demo_token_') && (options.method || 'GET') === 'GET') {
+    if ((options.method || 'GET') === 'GET') {
       return getDemoFallbackForEndpoint(cleanEndpoint);
     }
     const errorMsg = data.detail || 'An unexpected API error occurred.';
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+  }
+
+  if ((options.method || 'GET') === 'GET') {
+    if (Array.isArray(data) && data.length === 0) {
+      const fallback = getDemoFallbackForEndpoint(cleanEndpoint);
+      if (Array.isArray(fallback) && fallback.length > 0) {
+        return fallback;
+      }
+    }
   }
 
   return data;

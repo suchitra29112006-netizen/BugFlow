@@ -375,15 +375,16 @@ app.include_router(departments.router)
 
 @app.on_event("startup")
 def seed_initial_data():
-    """Seed initial demo users, project, skills catalog, milestones, and user intelligence if DB is fresh."""
+    """Seed initial demo users, projects, departments, squads, workspaces, goals, documents, sprints, milestones, SLAs, and incidents if DB is fresh."""
     seed_enabled = os.getenv("SEED_DEMO_DATA", "true").lower() in ["true", "1", "yes"]
     if not seed_enabled:
         return
 
     db: Session = SessionLocal()
     try:
-        label_count = db.query(Label).count()
-        if label_count == 0:
+        from datetime import datetime, timedelta
+        # 1. Seed Labels
+        if db.query(Label).count() == 0:
             default_labels = [
                 Label(name="Security", color="#ef4444"),
                 Label(name="Authentication", color="#a855f7"),
@@ -396,65 +397,26 @@ def seed_initial_data():
             db.add_all(default_labels)
             db.commit()
 
-        user_count = db.query(User).count()
-        if user_count == 0:
-            print("Seeding initial BugFlow demo data...")
-            admin = User(
-                name="System Administrator",
-                email="admin@bugflow.io",
-                password_hash=get_password_hash("admin123"),
-                role=UserRole.ADMIN
-            )
-            developer = User(
-                name="Sarah Developer",
-                email="dev@bugflow.io",
-                password_hash=get_password_hash("dev123"),
-                role=UserRole.DEVELOPER
-            )
-            qa = User(
-                name="Alex QA",
-                email="qa@bugflow.io",
-                password_hash=get_password_hash("qa123"),
-                role=UserRole.QA
-            )
-            reporter = User(
-                name="David Reporter",
-                email="reporter@bugflow.io",
-                password_hash=get_password_hash("reporter123"),
-                role=UserRole.REPORTER
-            )
-            db.add_all([admin, developer, qa, reporter])
+        # 2. Seed Users
+        if db.query(User).count() == 0:
+            print("Seeding initial BugFlow demo users...")
+            admin = User(name="System Administrator", email="admin@bugflow.io", password_hash=get_password_hash("admin123"), role=UserRole.ADMIN)
+            george = User(name="George Dev", email="george@gmail.com", password_hash=get_password_hash("dev123"), role=UserRole.ADMIN)
+            sarah = User(name="Sarah Jenkins", email="sarah@bugflow.io", password_hash=get_password_hash("dev123"), role=UserRole.DEVELOPER)
+            alex = User(name="Alex Rivera", email="alex@bugflow.io", password_hash=get_password_hash("qa123"), role=UserRole.QA)
+            reporter = User(name="David Reporter", email="reporter@bugflow.io", password_hash=get_password_hash("reporter123"), role=UserRole.REPORTER)
+            db.add_all([admin, george, sarah, alex, reporter])
             db.commit()
-            db.refresh(admin)
-            db.refresh(developer)
-            db.refresh(qa)
-            db.refresh(reporter)
+            for u in [admin, george, sarah, alex, reporter]:
+                db.refresh(u)
 
-            # Seed Demo User Profiles
-            prof1 = UserProfile(
-                user_id=developer.id,
-                department="Backend Engineering",
-                highest_qualification="B.Tech Computer Science",
-                specialization="Backend & API Architecture",
-                graduation_year=2020,
-                years_experience=4.5,
-                experience_level="Senior",
-                availability_status="Available"
-            )
-            prof2 = UserProfile(
-                user_id=admin.id,
-                department="Architecture & Systems",
-                highest_qualification="M.Tech Software Engineering",
-                specialization="Full Stack System Architecture",
-                graduation_year=2018,
-                years_experience=6.0,
-                experience_level="Expert",
-                availability_status="Available"
-            )
-            db.add_all([prof1, prof2])
+            prof1 = UserProfile(user_id=sarah.id, department="Engineering", highest_qualification="B.Tech Computer Science", specialization="Backend & API Architecture", graduation_year=2020, years_experience=4.5, experience_level="Senior", availability_status="Available")
+            prof2 = UserProfile(user_id=george.id, department="Cloud Infrastructure", highest_qualification="M.Tech Software Engineering", specialization="Full Stack System Architecture", graduation_year=2018, years_experience=6.0, experience_level="Expert", availability_status="Available")
+            prof3 = UserProfile(user_id=alex.id, department="Quality Assurance", highest_qualification="B.Sc IT", specialization="Automated QA & Security", graduation_year=2021, years_experience=3.0, experience_level="Mid", availability_status="Available")
+            prof4 = UserProfile(user_id=admin.id, department="Product & Security", highest_qualification="M.Sc Security", specialization="Product Governance & InfoSec", graduation_year=2017, years_experience=7.0, experience_level="Expert", availability_status="Available")
+            db.add_all([prof1, prof2, prof3, prof4])
             db.commit()
 
-            # Seed Skills Catalog
             skills_catalog = [
                 Skill(name="Python", category="Backend"),
                 Skill(name="FastAPI", category="Backend"),
@@ -468,41 +430,142 @@ def seed_initial_data():
             db.add_all(skills_catalog)
             db.commit()
 
-            # Seed User Skills
             py_skill = db.query(Skill).filter(Skill.name == "Python").first()
             fa_skill = db.query(Skill).filter(Skill.name == "FastAPI").first()
             if py_skill and fa_skill:
                 db.add_all([
-                    UserSkill(user_id=developer.id, skill_id=py_skill.id, proficiency_level=5, years_experience=4.5, certification="Python Professional"),
-                    UserSkill(user_id=developer.id, skill_id=fa_skill.id, proficiency_level=5, years_experience=4.0, certification="FastAPI Expert")
+                    UserSkill(user_id=sarah.id, skill_id=py_skill.id, proficiency_level=5, years_experience=4.5, certification="Python Professional"),
+                    UserSkill(user_id=sarah.id, skill_id=fa_skill.id, proficiency_level=5, years_experience=4.0, certification="FastAPI Expert")
                 ])
                 db.commit()
 
-            # Seed Demo Project
-            project = Project(
-                name="BugFlow Core Platform",
-                description="Primary repository for BugFlow tracking app & AI engine.",
-                owner_id=admin.id
-            )
-            db.add(project)
-            db.commit()
-            db.refresh(project)
+        admin_user = db.query(User).filter(User.role == UserRole.ADMIN).first() or db.query(User).first()
+        dev_user = db.query(User).filter(User.role == UserRole.DEVELOPER).first() or admin_user
+        qa_user = db.query(User).filter(User.role == UserRole.QA).first() or admin_user
 
-            # Seed Demo Issues
-            issue1 = Issue(
-                title="Login page crashes immediately after login",
-                description="Application crashes immediately after user submits login form with 500 error in auth handler.",
-                severity=IssueSeverity.CRITICAL,
-                status=IssueStatus.OPEN,
-                priority=IssuePriority.CRITICAL,
-                reporter_id=reporter.id,
-                assigned_to=developer.id,
-                project_id=project.id
-            )
-            db.add(issue1)
+        # 3. Seed Organization
+        if db.query(Organization).count() == 0:
+            org = Organization(name="BugFlow Technologies", description="AI-Powered Engineering Platform", logo_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150")
+            db.add(org)
             db.commit()
 
-            print("Initial demo data successfully seeded!")
+        org_id = (db.query(Organization).first()).id
+
+        # 4. Seed Departments
+        if db.query(Department).count() == 0:
+            deps = [
+                Department(organization_id=org_id, name="Engineering", code="ENG", department_type="Engineering", description="Core backend and frontend software development."),
+                Department(organization_id=org_id, name="Quality Assurance", code="QA", department_type="QA & Quality", description="Test automation, manual testing, and defect verification."),
+                Department(organization_id=org_id, name="Cloud Infrastructure", code="SECOPS", department_type="DevOps & Security", description="CI/CD, Kubernetes, cloud infrastructure, and security."),
+                Department(organization_id=org_id, name="Product & Security", code="PROD", department_type="Product & Design", description="Product roadmap, UX research, and application security.")
+            ]
+            db.add_all(deps)
+            db.commit()
+
+        eng_dept = db.query(Department).filter(Department.name == "Engineering").first() or db.query(Department).first()
+
+        # 5. Seed Teams (Squads)
+        if db.query(Team).count() == 0:
+            squads = [
+                Team(organization_id=org_id, department_id=eng_dept.id, name="Alpha Squad", description="Core feature squad.", lead_id=dev_user.id),
+                Team(organization_id=org_id, department_id=eng_dept.id, name="Core Backend", description="Backend APIs and DB performance.", lead_id=dev_user.id),
+                Team(organization_id=org_id, department_id=eng_dept.id, name="Mobile QA Guild", description="QA testing for mobile applications.", lead_id=qa_user.id),
+                Team(organization_id=org_id, department_id=eng_dept.id, name="Infrastructure & Security", description="DevOps and security audits.", lead_id=admin_user.id)
+            ]
+            db.add_all(squads)
+            db.commit()
+
+        # 6. Seed Workspaces
+        if db.query(Workspace).count() == 0:
+            workspaces = [
+                Workspace(organization_id=org_id, name="Enterprise Engineering Workspace", description="Main engineering workspace for core microservices.", key="EEW", owner_id=admin_user.id, lead_id=dev_user.id),
+                Workspace(organization_id=org_id, name="Core Infrastructure Workspace", description="Cloud architecture, Terraform, and Render configuration.", key="CIW", owner_id=admin_user.id, lead_id=dev_user.id),
+                Workspace(organization_id=org_id, name="Mobile Testing Hub", description="Mobile QA automation suite and release verification.", key="MTH", owner_id=admin_user.id, lead_id=qa_user.id)
+            ]
+            db.add_all(workspaces)
+            db.commit()
+
+        ws1 = db.query(Workspace).first()
+
+        # 7. Seed Projects
+        if db.query(Project).count() == 0:
+            projects = [
+                Project(name="BugFlow Core Platform", key="BUG", description="AI-native defect tracking & engineering platform.", owner_id=admin_user.id, workspace_id=ws1.id),
+                Project(name="Cloud Infrastructure Setup", key="INFRA", description="Vercel + Render + PostgreSQL production stack.", owner_id=admin_user.id, workspace_id=ws1.id),
+                Project(name="Mobile App Redesign", key="MOB", description="React Native mobile client for QA field testing.", owner_id=qa_user.id, workspace_id=ws1.id),
+                Project(name="AI Intelligence Engine", key="AI", description="Gemini AI resolution & copilot assistant suite.", owner_id=admin_user.id, workspace_id=ws1.id)
+            ]
+            db.add_all(projects)
+            db.commit()
+
+        proj1 = db.query(Project).first()
+
+        # 8. Seed Issues
+        if db.query(Issue).count() == 0:
+            issues = [
+                Issue(title="Verify Vercel SPA routing fallback for direct link refresh", description="Ensure client side routing rewrites work on all nested routes.", severity=IssueSeverity.HIGH, status=IssueStatus.IN_PROGRESS, priority=IssuePriority.HIGH, reporter_id=qa_user.id, assigned_to=dev_user.id, project_id=proj1.id),
+                Issue(title="Configure PostgreSQL connection pooling", description="Set pool_pre_ping and connection limits in connection.py.", severity=IssueSeverity.MEDIUM, status=IssueStatus.RESOLVED, priority=IssuePriority.MEDIUM, reporter_id=dev_user.id, assigned_to=dev_user.id, project_id=proj1.id),
+                Issue(title="Optimize Recharts dashboard chunk bundle size", description="Code split dynamic imports to optimize Vite bundle size.", severity=IssueSeverity.LOW, status=IssueStatus.OPEN, priority=IssuePriority.LOW, reporter_id=admin_user.id, assigned_to=dev_user.id, project_id=proj1.id),
+                Issue(title="Enforce RBAC permissions on SLA escalation endpoint", description="Verify JWT role claims before modifying SLA escalation rules.", severity=IssueSeverity.CRITICAL, status=IssueStatus.OPEN, priority=IssuePriority.CRITICAL, reporter_id=qa_user.id, assigned_to=admin_user.id, project_id=proj1.id)
+            ]
+            db.add_all(issues)
+            db.commit()
+
+        # 9. Seed Goals / OKRs
+        if db.query(Goal).count() == 0:
+            goals = [
+                Goal(organization_id=org_id, department_id=eng_dept.id, owner_id=admin_user.id, title="Achieve 99.99% Production Uptime", goal_type="Quality", time_period="Q4 2026", target_metric="Zero critical downtime incidents", current_progress=85.0, expected_progress=90.0, status="ON_TRACK"),
+                Goal(organization_id=org_id, department_id=eng_dept.id, owner_id=qa_user.id, title="Reduce Critical Defect Resolution Time to < 4 Hours", goal_type="Quality", time_period="Q4 2026", target_metric="MTTR under 4 hours", current_progress=92.0, expected_progress=95.0, status="ON_TRACK"),
+                Goal(organization_id=org_id, department_id=eng_dept.id, owner_id=dev_user.id, title="Launch BugFlow v4.0 AI Intelligence Suite", goal_type="Engineering", time_period="Q3 2026", target_metric="Complete deployment on Vercel + Render", current_progress=100.0, expected_progress=100.0, status="COMPLETED")
+            ]
+            db.add_all(goals)
+            db.commit()
+
+        # 10. Seed Documents
+        if db.query(Document).count() == 0:
+            docs = [
+                Document(title="Architecture & Deployment Specification v4.0", description="Comprehensive architecture guide for Vercel + Render deployment.", content="# BugFlow v4.0 Architecture Specification", document_type="Technical Specification", category="ENGINEERING", status="APPROVED", version="v4.0", visibility="ORGANIZATION", author_id=admin_user.id, project_id=proj1.id),
+                Document(title="Vercel + Render + PostgreSQL Production Setup Guide", description="Step by step deployment setup guide.", content="# Setup Guide", document_type="Deployment Guide", category="ENGINEERING", status="APPROVED", version="v1.0", visibility="ORGANIZATION", author_id=dev_user.id, project_id=proj1.id),
+                Document(title="Security Governance & Vulnerability Playbook", description="Security governance guidelines and RBAC enforcement.", content="# Security Playbook", document_type="Policy Document", category="ENGINEERING", status="APPROVED", version="v1.0", visibility="ORGANIZATION", author_id=admin_user.id, project_id=proj1.id)
+            ]
+            db.add_all(docs)
+            db.commit()
+
+        # 11. Seed Sprints
+        if db.query(Sprint).count() == 0:
+            now = datetime.utcnow()
+            sprint = Sprint(name="Sprint 24 - Production Release", description="Deployment and validation sprint", goal="Deploy Vercel + Render production stack", start_date=now - timedelta(days=7), end_date=now + timedelta(days=7), status="ACTIVE", planned_story_points=30, completed_story_points=24, health_score=95.0)
+            db.add(sprint)
+            db.commit()
+
+        # 12. Seed Milestones
+        if db.query(Milestone).count() == 0:
+            milestone = Milestone(name="v4.0 Production Launch", description="Complete production release", due_date=datetime.utcnow() + timedelta(days=7), status="Active", project_id=proj1.id)
+            db.add(milestone)
+            db.commit()
+
+        # 13. Seed SLA Policies
+        if db.query(SLAPolicy).count() == 0:
+            sla_policies = [
+                SLAPolicy(name="Critical Defect SLA", severity="Critical", target_hours=4.0, escalate_role="Engineering Director", is_active=True),
+                SLAPolicy(name="High Severity Defect SLA", severity="High", target_hours=24.0, escalate_role="Lead Developer", is_active=True)
+            ]
+            db.add_all(sla_policies)
+            db.commit()
+
+        # 14. Seed Automation Rules
+        if db.query(AutomationRule).count() == 0:
+            rule = AutomationRule(name="Auto-assign Critical Security Defects", trigger_event="ISSUE_CREATED", condition_field="severity", condition_value="Critical", action_type="AUTO_ASSIGN", action_value=str(admin_user.id), is_active=True)
+            db.add(rule)
+            db.commit()
+
+        # 15. Seed Incidents
+        if db.query(Incident).count() == 0:
+            inc = Incident(incident_code="INC-001", title="Database Pool Connection Spike", severity=FindingSeverity.HIGH, status="RESOLVED", affected_components="Database / Backend API", postmortem_text="Connection pool exhaustion resolved by enabling pool pre-ping.")
+            db.add(inc)
+            db.commit()
+
+        print("Comprehensive BugFlow v4.0 demo dataset successfully seeded!")
     except Exception as e:
         print(f"Error seeding initial data: {e}")
     finally:
