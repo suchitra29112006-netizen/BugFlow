@@ -2,10 +2,12 @@ services:
   # 1. BugFlow FastAPI Backend Web Service
   - type: web
     name: bugflow-backend
-    runtime: python
+    env: python
+    region: oregon
     plan: free
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -21,6 +23,7 @@ services:
 databases:
   # 2. Render Managed PostgreSQL Database (Free Tier)
   - name: bugflow-postgres
+    region: oregon
     plan: free
     databaseName: bugflow
     user: bugflow_user
