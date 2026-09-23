@@ -260,17 +260,17 @@ export function DepartmentDetail({ departmentId, onNavigate, onSelectIssue, onSe
     );
   }
 
-  const dept = data.department;
-  const kpis = data.kpis;
-  const healthDetails = data.health_details;
-  const aiInsights = data.ai_insights;
+  const dept = data?.department || data || {};
+  const kpis = data?.kpis || {};
+  const healthDetails = data?.health_details || {};
+  const aiInsights = data?.ai_insights || {};
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'squads', label: 'Squads', icon: Layers, count: kpis.total_squads },
-    { id: 'members', label: 'Members', icon: Users, count: kpis.total_members },
-    { id: 'projects', label: 'Projects', icon: FolderKanban, count: kpis.total_projects },
-    { id: 'issues', label: 'Issues', icon: Bug, count: kpis.open_defects },
+    { id: 'squads', label: 'Squads', icon: Layers, count: kpis?.total_squads || 0 },
+    { id: 'members', label: 'Members', icon: Users, count: kpis?.total_members || 0 },
+    { id: 'projects', label: 'Projects', icon: FolderKanban, count: kpis?.total_projects || 0 },
+    { id: 'issues', label: 'Issues', icon: Bug, count: kpis?.open_defects || 0 },
     { id: 'sprints', label: 'Sprints', icon: Zap },
     { id: 'goals', label: 'Goals', icon: Target },
     { id: 'sla', label: 'SLA Engine', icon: ShieldCheck },

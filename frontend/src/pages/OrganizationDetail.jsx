@@ -201,13 +201,13 @@ export function OrganizationDetail({ orgId = 1, onNavigate, onSelectIssue, onSel
     );
   }
 
-  const org = data.organization;
-  const kpis = data.kpis;
-  const departments = data.departments || [];
-  const projects = data.projects || [];
-  const recentActivity = data.recent_activity || [];
-  const pinnedDocs = data.pinned_documents || [];
-  const healthTrend = data.health_trend_8_weeks || [];
+  const org = data?.organization || data || {};
+  const kpis = data?.kpis || {};
+  const departments = data?.departments || [];
+  const projects = data?.projects || [];
+  const recentActivity = data?.recent_activity || [];
+  const pinnedDocs = data?.pinned_documents || [];
+  const healthTrend = data?.health_trend_8_weeks || [];
 
   return (
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1440px', margin: '0 auto' }}>

@@ -207,9 +207,93 @@ const getDemoFallbackForEndpoint = (endpoint) => {
   ];
 
   const sampleWorkspaces = [
-    { id: 1, name: "Enterprise Engineering Workspace", category: "Production", member_count: 15, project_count: 4, issue_count: 18, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] },
-    { id: 2, name: "Core Infrastructure Workspace", category: "Infrastructure", member_count: 8, project_count: 2, issue_count: 6, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] },
-    { id: 3, name: "Mobile Testing Hub", category: "QA", member_count: 6, project_count: 2, issue_count: 5, status: "Active", projects: sampleProjects, members: sampleUsers, issues: sampleIssues, squads: sampleSquads, documents: [], sprints: [], repositories: [], releases: [], incidents: [] }
+    { 
+      id: 1, 
+      name: "Enterprise Engineering Workspace", 
+      key: "EEW", 
+      workspace_type: "Engineering", 
+      health_status: "Healthy", 
+      lead_name: "Sarah Jenkins", 
+      owner_name: "Admin User", 
+      default_sprint_length: 14, 
+      timezone: "UTC", 
+      projects_count: 4, 
+      teams_count: 3, 
+      open_issues_count: 5, 
+      visibility: "Organization", 
+      status: "Active",
+      category: "Production", 
+      member_count: 15, 
+      project_count: 4, 
+      issue_count: 18, 
+      projects: sampleProjects, 
+      members: sampleUsers, 
+      issues: sampleIssues, 
+      squads: sampleSquads, 
+      documents: [], 
+      sprints: [], 
+      repositories: [], 
+      releases: [], 
+      incidents: [] 
+    },
+    { 
+      id: 2, 
+      name: "Core Infrastructure Workspace", 
+      key: "INFRA", 
+      workspace_type: "Infrastructure", 
+      health_status: "Healthy", 
+      lead_name: "George Dev", 
+      owner_name: "Admin User", 
+      default_sprint_length: 14, 
+      timezone: "UTC", 
+      projects_count: 2, 
+      teams_count: 2, 
+      open_issues_count: 2, 
+      visibility: "Organization", 
+      status: "Active",
+      category: "Infrastructure", 
+      member_count: 8, 
+      project_count: 2, 
+      issue_count: 6, 
+      projects: sampleProjects, 
+      members: sampleUsers, 
+      issues: sampleIssues, 
+      squads: sampleSquads, 
+      documents: [], 
+      sprints: [], 
+      repositories: [], 
+      releases: [], 
+      incidents: [] 
+    },
+    { 
+      id: 3, 
+      name: "Mobile Testing Hub", 
+      key: "MOB", 
+      workspace_type: "QA Testing", 
+      health_status: "Healthy", 
+      lead_name: "Alex Rivera", 
+      owner_name: "Sarah Jenkins", 
+      default_sprint_length: 14, 
+      timezone: "UTC", 
+      projects_count: 2, 
+      teams_count: 1, 
+      open_issues_count: 1, 
+      visibility: "Organization", 
+      status: "Active",
+      category: "QA", 
+      member_count: 6, 
+      project_count: 2, 
+      issue_count: 5, 
+      projects: sampleProjects, 
+      members: sampleUsers, 
+      issues: sampleIssues, 
+      squads: sampleSquads, 
+      documents: [], 
+      sprints: [], 
+      repositories: [], 
+      releases: [], 
+      incidents: [] 
+    }
   ];
 
   const sampleGoals = [
@@ -320,7 +404,35 @@ const getDemoFallbackForEndpoint = (endpoint) => {
   }
 
   // Single Detail Object Endpoints
-  if (ep.match(/\/departments\/\d+$/)) return sampleDepartments[0];
+  if (ep.match(/\/departments\/\d+$/)) {
+    return {
+      department: sampleDepartments[0],
+      kpis: {
+        total_members: 12,
+        total_squads: 3,
+        total_projects: 4,
+        open_defects: 5,
+        critical_defects: 1,
+        sla_violations: 0,
+        resolved_defects: 15,
+        avg_resolution_days: 2.4,
+        sprint_progress_pct: 78,
+        health_status: "HEALTHY"
+      },
+      health_details: {
+        status: "HEALTHY",
+        reasons: ["All squad SLAs met with zero active critical production blockers."],
+        workload_risk: "Low",
+        sprint_risk: "Normal"
+      },
+      ai_insights: {
+        summary: "Engineering department operates with 3 squads and 5 open defects across 4 active projects.",
+        top_contributing_squad: "Alpha Squad",
+        affected_projects: ["BugFlow Core Platform", "Cloud Infrastructure Setup"],
+        suggested_actions: ["Maintain current zero-critical defect SLA standard.", "Sprint capacity allocation remains balanced."]
+      }
+    };
+  }
   if (ep.match(/\/workspaces\/\d+$/)) return sampleWorkspaces[0];
   if (ep.match(/\/goals\/\d+$/)) return sampleGoals[0];
   if (ep.match(/\/documents\/\d+$/)) return sampleDocuments[0];
@@ -329,12 +441,33 @@ const getDemoFallbackForEndpoint = (endpoint) => {
   if (ep.match(/\/issues\/\d+$/)) return sampleIssues[0];
   if (ep.match(/\/organizations\/\d+$/)) {
     return {
-      id: 1,
-      name: "BugFlow Technologies Org",
-      members: sampleUsers,
+      organization: {
+        id: 1,
+        name: "BugFlow Technologies Org",
+        code: "BUGFLOW",
+        plan: "Enterprise Plan",
+        description: "AI-native defect tracking and engineering intelligence platform.",
+        industry: "Software & Cloud Services",
+        company_size: "50-200 Employees",
+        timezone: "UTC (Coordinated Universal Time)",
+        website: "https://bugflow.io",
+        headquarters: "San Francisco, CA"
+      },
+      kpis: {
+        health_rating: "HEALTHY",
+        health_score: 95,
+        total_departments: 4,
+        total_squads: 4,
+        total_projects: 4,
+        open_defects: 5,
+        critical_defects: 1,
+        resolved_defects: 12
+      },
+      departments: sampleDepartments,
       projects: sampleProjects,
-      issues: sampleIssues,
-      departments: sampleDepartments
+      recent_activity: [],
+      pinned_documents: [],
+      health_trend_8_weeks: [90, 92, 91, 94, 95, 93, 96, 95]
     };
   }
 
