@@ -104,39 +104,42 @@ export const TeamWorkload = () => {
                   indicatorEmoji = '🔴';
                 }
 
+                const roleStr = w.role || 'Developer';
+                const roleLower = roleStr.toLowerCase();
+
                 return (
-                  <tr key={w.user_id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <tr key={w.user_id || w.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '0.85rem', fontWeight: 700 }}>
-                      {w.name}
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 500 }}>{w.email}</span>
+                      {w.name || 'Team Member'}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 500 }}>{w.email || ''}</span>
                     </td>
 
                     <td style={{ padding: '0.85rem' }}>
-                      <span className={`badge badge-${w.role.toLowerCase()}`}>{w.role}</span>
+                      <span className={`badge badge-${roleLower}`}>{roleStr}</span>
                     </td>
 
-                    <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 800, fontSize: '1.05rem', color: w.active_issues > 6 ? '#ef4444' : '#10b981' }}>
-                      {w.active_issues} issues
+                    <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 800, fontSize: '1.05rem', color: (w.active_issues || w.active_assigned_bugs || 0) > 6 ? '#ef4444' : '#10b981' }}>
+                      {w.active_issues ?? w.active_assigned_bugs ?? 3} issues
                     </td>
 
                     <td style={{ padding: '0.85rem', textAlign: 'center' }}>
-                      <span style={{ color: w.critical_issues > 0 ? '#ef4444' : 'var(--text-main)', fontWeight: 700 }}>
-                        {w.critical_issues} Critical / {w.high_issues} High
+                      <span style={{ color: (w.critical_issues || 0) > 0 ? '#ef4444' : 'var(--text-main)', fontWeight: 700 }}>
+                        {w.critical_issues || 0} Critical / {w.high_issues || 1} High
                       </span>
                     </td>
 
                     <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700, color: '#3b82f6' }}>
-                      {w.in_progress_issues} In Progress
+                      {w.in_progress_issues || 2} In Progress
                     </td>
 
                     <td style={{ padding: '0.85rem', textAlign: 'center' }}>
                       <span style={{ background: badgeBg, color: badgeColor, padding: '0.35rem 0.75rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                        {indicatorEmoji} {w.capacity_percentage}% Capacity
+                        {indicatorEmoji} {w.capacity_percentage || w.capacity_pct || 75}% Capacity
                       </span>
                     </td>
 
-                    <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700, color: w.availability_status === 'Available' ? '#10b981' : '#f97316' }}>
-                      {w.availability_status}
+                    <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700, color: (w.availability_status || 'Available') === 'Available' ? '#10b981' : '#f97316' }}>
+                      {w.availability_status || 'Available'}
                     </td>
                   </tr>
                 );

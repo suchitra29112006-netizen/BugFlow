@@ -16,10 +16,166 @@ const getDemoFallbackForEndpoint = (endpoint) => {
 
   // Shared Seed Records
   const sampleUsers = [
-    { id: 1, name: "George Dev", email: "george@gmail.com", role: "Admin", department: "Engineering", workload_status: "Optimal", capacity_pct: 75, active_assigned_bugs: 3, resolved_bugs: 12 },
-    { id: 2, name: "Sarah Jenkins", email: "sarah@bugflow.io", role: "Lead Engineer", department: "Engineering", workload_status: "High", capacity_pct: 90, active_assigned_bugs: 5, resolved_bugs: 20 },
-    { id: 3, name: "Alex Rivera", email: "alex@bugflow.io", role: "QA Lead", department: "Quality Assurance", workload_status: "Optimal", capacity_pct: 60, active_assigned_bugs: 1, resolved_bugs: 8 },
-    { id: 4, name: "Admin User", email: "admin@bugflow.io", role: "Admin", department: "Product & Security", workload_status: "Optimal", capacity_pct: 50, active_assigned_bugs: 1, resolved_bugs: 5 }
+    {
+      id: 1,
+      user_id: 1,
+      name: "George Dev",
+      email: "george@gmail.com",
+      role: "Admin",
+      department: "Cloud Infrastructure",
+      department_id: 3,
+      workspace: "Core Infrastructure Workspace",
+      workspace_id: 2,
+      squad: "Core Backend",
+      squad_id: 2,
+      status: "OPTIMAL",
+      workload_status: "OPTIMAL",
+      status_indicator: "GREEN",
+      availability_status: "Available",
+      capacity_hours: 40,
+      allocated_hours: 30,
+      available_hours: 10,
+      utilization_pct: 75,
+      capacity_pct: 75,
+      capacity_percentage: 75,
+      active_issues: 3,
+      active_assigned_bugs: 3,
+      critical_issues: 0,
+      high_issues: 1,
+      in_progress_issues: 2,
+      resolved_bugs: 12,
+      skills: ["Python", "FastAPI", "Docker", "PostgreSQL", "Security"],
+      workload: {
+        capacity_hours: 40,
+        allocated_hours: 30,
+        available_hours: 10,
+        workload_pct: 75,
+        open_bugs: 3,
+        critical_bugs: 0,
+        completed_sprint: 12,
+        status: "OPTIMAL"
+      }
+    },
+    {
+      id: 2,
+      user_id: 2,
+      name: "Sarah Jenkins",
+      email: "sarah@bugflow.io",
+      role: "Lead Engineer",
+      department: "Engineering",
+      department_id: 1,
+      workspace: "Enterprise Engineering Workspace",
+      workspace_id: 1,
+      squad: "Alpha Squad",
+      squad_id: 1,
+      status: "AT_RISK",
+      workload_status: "AT_RISK",
+      status_indicator: "YELLOW",
+      availability_status: "Limited",
+      capacity_hours: 40,
+      allocated_hours: 36,
+      available_hours: 4,
+      utilization_pct: 90,
+      capacity_pct: 90,
+      capacity_percentage: 90,
+      active_issues: 5,
+      active_assigned_bugs: 5,
+      critical_issues: 1,
+      high_issues: 2,
+      in_progress_issues: 2,
+      resolved_bugs: 20,
+      skills: ["React", "FastAPI", "Python", "JavaScript", "REST API"],
+      workload: {
+        capacity_hours: 40,
+        allocated_hours: 36,
+        available_hours: 4,
+        workload_pct: 90,
+        open_bugs: 5,
+        critical_bugs: 1,
+        completed_sprint: 20,
+        status: "AT_RISK"
+      }
+    },
+    {
+      id: 3,
+      user_id: 3,
+      name: "Alex Rivera",
+      email: "alex@bugflow.io",
+      role: "QA Lead",
+      department: "Quality Assurance",
+      department_id: 2,
+      workspace: "Mobile Testing Hub",
+      workspace_id: 3,
+      squad: "Mobile QA Guild",
+      squad_id: 3,
+      status: "OPTIMAL",
+      workload_status: "OPTIMAL",
+      status_indicator: "GREEN",
+      availability_status: "Available",
+      capacity_hours: 40,
+      allocated_hours: 24,
+      available_hours: 16,
+      utilization_pct: 60,
+      capacity_pct: 60,
+      capacity_percentage: 60,
+      active_issues: 1,
+      active_assigned_bugs: 1,
+      critical_issues: 0,
+      high_issues: 0,
+      in_progress_issues: 1,
+      resolved_bugs: 8,
+      skills: ["QA Automation", "Playwright", "Jest", "Security"],
+      workload: {
+        capacity_hours: 40,
+        allocated_hours: 24,
+        available_hours: 16,
+        workload_pct: 60,
+        open_bugs: 1,
+        critical_bugs: 0,
+        completed_sprint: 8,
+        status: "OPTIMAL"
+      }
+    },
+    {
+      id: 4,
+      user_id: 4,
+      name: "Admin User",
+      email: "admin@bugflow.io",
+      role: "Admin",
+      department: "Product & Security",
+      department_id: 4,
+      workspace: "Enterprise Engineering Workspace",
+      workspace_id: 1,
+      squad: "Infrastructure & Security",
+      squad_id: 4,
+      status: "OPTIMAL",
+      workload_status: "OPTIMAL",
+      status_indicator: "GREEN",
+      availability_status: "Available",
+      capacity_hours: 40,
+      allocated_hours: 20,
+      available_hours: 20,
+      utilization_pct: 50,
+      capacity_pct: 50,
+      capacity_percentage: 50,
+      active_issues: 1,
+      active_assigned_bugs: 1,
+      critical_issues: 1,
+      high_issues: 0,
+      in_progress_issues: 1,
+      resolved_bugs: 5,
+      skills: ["Security", "Docker", "FastAPI", "Python"],
+      workload: {
+        capacity_hours: 40,
+        allocated_hours: 20,
+        available_hours: 20,
+        workload_pct: 50,
+        open_bugs: 1,
+        critical_bugs: 1,
+        completed_sprint: 5,
+        status: "OPTIMAL"
+      }
+    }
   ];
 
   const sampleProjects = [
@@ -92,13 +248,54 @@ const getDemoFallbackForEndpoint = (endpoint) => {
     };
   }
 
-  // Workload Heatmap
+  // Workload Heatmap & Summary
   if (ep.includes('heatmap') || ep.includes('workload')) {
-    return [
-      { developer_id: 1, developer_name: "George Dev", role: "Lead Dev", active_assigned_bugs: 3, resolved_bugs: 12, workload_level: "Medium" },
-      { developer_id: 2, developer_name: "Sarah Jenkins", role: "Backend Eng", active_assigned_bugs: 5, resolved_bugs: 20, workload_level: "High" },
-      { developer_id: 3, developer_name: "Alex Rivera", role: "QA Lead", active_assigned_bugs: 1, resolved_bugs: 8, workload_level: "Low" }
-    ];
+    return sampleUsers;
+  }
+
+  // People Overview
+  if (ep.includes('/people/overview')) {
+    return {
+      kpis: {
+        total_members: 4,
+        avg_allocation_pct: 69.0,
+        available_capacity_pct: 31.0,
+        at_risk_count: 1,
+        overloaded_count: 0,
+        active_issues_count: 10,
+        critical_issues_count: 2,
+        unavailable_count: 0
+      },
+      ai_insights: [
+        {
+          title: "Capacity Optimal in Quality Assurance",
+          description: "Alex Rivera has 16 hours available for automated regression suite validation."
+        }
+      ]
+    };
+  }
+
+  // People Drawer
+  if (ep.includes('/drawer')) {
+    return {
+      member: sampleUsers[0],
+      assigned_issues: sampleIssues
+    };
+  }
+
+  // AI Assignment Match
+  if (ep.includes('ai-assignment-match')) {
+    return {
+      suggested_assignees: sampleUsers.map(u => ({
+        member_id: u.id,
+        name: u.name,
+        role: u.role,
+        email: u.email,
+        recommendation_reason: "High skill match & optimal available capacity",
+        available_hours: u.available_hours,
+        utilization_pct: u.utilization_pct
+      }))
+    };
   }
 
   // Gamification Badges
