@@ -57,7 +57,7 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
         answer = "⚠️ CONFIRMATION REQUIRED: Are you sure you want to assign Defect #1 to Sarah Developer?";
         const payload = {
           prompt: "Assign Defect #1 to Sarah Developer",
-          action_type: "assign_issue",
+          action_type: "ASSIGN_ISSUE",
           issue_id: 1,
           target: "Sarah Developer"
         };
@@ -69,15 +69,17 @@ export const BugFlowCopilotDrawer = ({ isOpen, onClose, onSelectIssue }) => {
         }]);
         return;
       } else if (q.includes('sprint') || q.includes('block')) {
-        answer = "Sprint 1 is 75% complete. Primary blocker: DEF-101 (Verify Vercel SPA routing fallback) assigned to Sarah Jenkins. 2 critical SLA defects remaining.";
+        answer = "Blocking Issues for 'Sprint 1 (Production Release)':\n• DEF-101: Verify Vercel SPA routing fallback (High - In Progress)\n• DEF-102: Configure PostgreSQL connection pooling (Critical - Open)";
       } else if (q.includes('risk') || q.includes('unresolved')) {
-        answer = "Highest risk unresolved defect: DEF-101 (High Severity, P1 Priority). Fingerprint matches Vercel static CDN routing configuration.";
+        answer = "Highest Risk Unresolved Defects:\n• DEF-101: Verify Vercel SPA routing fallback (Score: 85/100 - Critical)\n• DEF-102: Configure PostgreSQL connection pooling (Score: 72/100 - High)";
       } else if (q.includes('sla') || q.includes('breach')) {
-        answer = "DEF-101 is currently at 82% SLA elapsed time (1h 15m remaining before SLA breach threshold).";
+        answer = "Found 1 defect(s) near or past SLA breach:\n• DEF-101: Verify Vercel SPA routing fallback (Assigned to: Sarah Developer)";
       } else if (q.includes('workload') || q.includes('highest')) {
-        answer = "Sarah Jenkins currently has the highest developer workload (5 active assigned defects, 85% capacity utilized).";
+        answer = "Developer with Highest Workload: Sarah Developer with 5 active open defects.\n\nWorkload Summary:\n• Sarah Developer: 5 active defects\n• George Dev: 3 active defects\n• Alex Rivera: 1 active defect";
+      } else if (q.includes('reopen') || q.includes('repeated')) {
+        answer = "Defects Repeatedly Reopened by QA (2 total):\n• DEF-101: Verify Vercel SPA routing fallback (Reopened 2x - In Progress)\n• DEF-102: PostgreSQL connection pooling under peak pool load (Reopened 1x - Resolved)";
       } else if (q.includes('draft') || q.includes('daily') || q.includes('update')) {
-        answer = "📊 BugFlow Daily Telemetry Brief:\n• Active Bugs: 5\n• Resolved Today: 13\n• Sprint Health: 96% Healthy";
+        answer = "📅 Draft Daily Team Defect Status Update:\n\n• Progress Today: Resolved 2 High severity defects in Payment API.\n• In Progress: 3 active open defects assigned across developers.\n• Attention Required: 1 critical defect approaching SLA threshold.\n• Blockers: None.";
       }
       setMessages(prev => [...prev, {
         sender: 'bot',
