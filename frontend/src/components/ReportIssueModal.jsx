@@ -878,9 +878,9 @@ export const ReportIssueModal = ({
                       <button
                         type="button"
                         style={{ border: 'none', background: 'none', color: '#a855f7', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 800 }}
-                        onClick={() => setAssignedTo(assigneeRecommendation.user.id.toString())}
+                        onClick={() => assigneeRecommendation?.user?.id && setAssignedTo(assigneeRecommendation.user.id.toString())}
                       >
-                        ⚡ Suggest: {assigneeRecommendation.user.name}
+                        ⚡ Suggest: {assigneeRecommendation?.user?.name || 'Suggested Lead'}
                       </button>
                     )}
                   </div>

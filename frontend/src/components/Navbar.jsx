@@ -95,9 +95,9 @@ export const Navbar = ({ theme, onToggleTheme, onOpenQRCode, onOpenWeeklyReport,
                   <UserIcon size={18} color="#10b981" />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{user.name}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{user?.name || 'User'}</span>
                   <span className="badge badge-reported" style={{ fontSize: '0.65rem', padding: '1px 6px', width: 'fit-content' }}>
-                    {user.role}
+                    {user?.role || 'Member'}
                   </span>
                 </div>
               </div>

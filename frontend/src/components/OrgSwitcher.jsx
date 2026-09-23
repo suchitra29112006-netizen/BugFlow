@@ -69,7 +69,7 @@ export default function OrgSwitcher({ activeOrg, onSelectOrg, onOpenWizard }) {
         <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', flexShrink: 0 }}>
           <Building2 size={16} />
         </div>
-        <span>{currentOrg.name}</span>
+        <span>{currentOrg?.name || 'BugFlow Technologies'}</span>
         <ChevronDown size={16} style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
       </button>
 
