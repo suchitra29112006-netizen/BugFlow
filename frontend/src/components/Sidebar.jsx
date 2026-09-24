@@ -44,7 +44,6 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       items: [
         { id: 'testmgmt', label: 'QA & Test Management', icon: CheckSquare },
         { id: 'releases', label: 'Releases & Deployments', icon: Rocket },
-        { id: 'incidents', label: 'Incident Center', icon: AlertTriangle },
         { id: 'security', label: 'Security Center', icon: ShieldCheck },
         { id: 'sla', label: 'SLA Engine', icon: ShieldAlert },
         { id: 'performance', label: 'Performance Center', icon: Gauge },
