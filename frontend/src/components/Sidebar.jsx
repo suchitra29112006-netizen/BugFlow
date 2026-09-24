@@ -89,14 +89,14 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
     }}>
       
       {/* Collapse / Expand Toggle Header */}
-      <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
         {!collapsed && (
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             ENGINEERING WORKSPACE
           </span>
         )}
         <button 
-          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
@@ -116,10 +116,10 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    justify: 'space-between', 
+                    justifyContent: 'space-between', 
                     padding: '0.25rem 0.5rem', 
                     cursor: 'pointer',
-                    color: 'rgba(255,255,255,0.4)',
+                    color: 'var(--text-dim)',
                     fontSize: '0.68rem',
                     fontWeight: 800,
                     textTransform: 'uppercase',
@@ -149,8 +149,8 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                           justifyContent: collapsed ? 'center' : 'flex-start',
                           borderRadius: '6px',
                           border: 'none',
-                          background: isActive ? 'rgba(16, 185, 129, 0.18)' : 'transparent',
-                          color: isActive ? '#34d399' : 'rgba(255,255,255,0.75)',
+                          background: isActive ? 'var(--accent-glow)' : 'transparent',
+                          color: isActive ? 'var(--accent-primary-hover)' : 'var(--text-main)',
                           fontSize: '0.82rem',
                           fontWeight: isActive ? 700 : 500,
                           cursor: 'pointer',
@@ -160,7 +160,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                         onClick={() => setActiveTab(item.id)}
                         title={collapsed ? item.label : undefined}
                       >
-                        <Icon size={16} color={isActive ? '#34d399' : 'rgba(255,255,255,0.6)'} />
+                        <Icon size={16} color={isActive ? 'var(--accent-primary)' : 'var(--text-muted)'} />
                         {!collapsed && <span>{item.label}</span>}
                       </button>
                     );
@@ -175,9 +175,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
       {/* Sidebar Footer Context */}
       {!collapsed && (
-        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border-subtle)', fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>BugFlow v3.0 Pro</span>
-          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '3px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', fontWeight: 700 }}>ACTIVE</span>
+          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '3px', background: 'var(--accent-glow)', color: 'var(--accent-primary-hover)', fontWeight: 700 }}>ACTIVE</span>
         </div>
       )}
 

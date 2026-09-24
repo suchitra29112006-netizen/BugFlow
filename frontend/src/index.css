@@ -1,27 +1,27 @@
 :root {
   /* Default: Light Green & Light Peach Theme */
-  --bg-primary: #f1f5f9;
+  --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-surface: #ffffff;
-  --bg-sidebar: #0f172a;
+  --bg-sidebar: #f1f5f9;
   --bg-card: #ffffff;
-  --bg-card-hover: #f8fafc;
+  --bg-card-hover: #e2e8f0;
   --border-color: #cbd5e1;
   --border-subtle: #e2e8f0;
 
   --text-main: #0f172a;
-  --text-muted: #475569;
+  --text-muted: #334155;
   --text-dim: #64748b;
 
   /* Mint Green & Peach Accent Tokens */
   --accent-primary: #10b981;
-  --accent-primary-hover: #059669;
-  --accent-glow: rgba(16, 185, 129, 0.2);
+  --accent-primary-hover: #047857;
+  --accent-glow: rgba(16, 185, 129, 0.12);
 
   --accent-peach: #f97316;
   --accent-peach-hover: #ea580c;
   --accent-peach-light: #ffedd5;
-  --peach-glow: rgba(249, 115, 22, 0.2);
+  --peach-glow: rgba(249, 115, 22, 0.15);
 
   --severity-critical: #ef4444;
   --severity-high: #f97316;
@@ -49,7 +49,7 @@
   --bg-primary: #0b1329;
   --bg-secondary: #111c35;
   --bg-surface: #111c35;
-  --bg-sidebar: #070d19;
+  --bg-sidebar: #0b1329;
   --bg-card: #111c35;
   --bg-card-hover: #192745;
   --border-color: #1e2d4a;
@@ -61,11 +61,11 @@
 
   --accent-primary: #10b981;
   --accent-primary-hover: #059669;
-  --accent-glow: rgba(16, 185, 129, 0.3);
+  --accent-glow: rgba(16, 185, 129, 0.25);
 
   --accent-peach: #f97316;
   --accent-peach-hover: #ea580c;
-  --peach-glow: rgba(249, 115, 22, 0.3);
+  --peach-glow: rgba(249, 115, 22, 0.25);
 
   --severity-critical: #ef4444;
   --severity-high: #f97316;
