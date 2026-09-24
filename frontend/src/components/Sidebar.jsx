@@ -27,9 +27,11 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       id: 'people',
       title: 'PEOPLE & TEAMS',
       items: [
+        { id: 'org', label: 'Organization', icon: Building2 },
+        { id: 'workspaces', label: 'Workspaces', icon: FolderKanban },
+        { id: 'departments', label: 'Departments', icon: Layers },
         { id: 'teams', label: 'Teams & Squads', icon: Users },
         { id: 'people', label: 'People & Workload', icon: UserCheck },
-        { id: 'departments', label: 'Departments', icon: Layers },
       ]
     },
     {
@@ -58,8 +60,6 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       id: 'system',
       title: 'SYSTEM',
       items: [
-        { id: 'org', label: 'Organization', icon: Building2 },
-        { id: 'workspaces', label: 'Workspaces', icon: FolderKanban },
         { id: 'settings', label: 'Settings Hub', icon: Settings },
       ]
     }
