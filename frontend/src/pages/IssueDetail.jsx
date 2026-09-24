@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../services/api';
-import { ArrowLeft, MessageSquare, Send, User, Trash2, CheckCircle2, Paperclip, FileText, Sparkles, Code2, Loader2, Copy, Check, Terminal, History, AlertCircle, ExternalLink, Clock, Flame, CheckSquare, Square, RefreshCw, Play, Pause, ThumbsUp, UserCheck, Trophy, GitPullRequest, Search, ShieldAlert, Layers, Network, Wand2, FlaskConical, GitFork, Dna, GitCommit } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Send, User, Trash2, CheckCircle2, Paperclip, FileText, Sparkles, Code2, Loader2, Copy, Check, Terminal, History, AlertCircle, ExternalLink, Clock, Flame, CheckSquare, Square, RefreshCw, Play, Pause, ThumbsUp, UserCheck, Trophy, GitPullRequest, Search, ShieldAlert, Layers, Network, Wand2, FlaskConical, GitFork, Dna, GitCommit, Plus, BarChart3, Calendar, Tag, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ActivityTimeline } from '../components/ActivityTimeline';
 import { AIAssignmentCard } from '../components/AIAssignmentCard';
@@ -49,9 +49,29 @@ export const IssueDetail = ({ issueId, onBack }) => {
   const [testScenarios, setTestScenarios] = useState(null);
   const [loadingScenarios, setLoadingScenarios] = useState(false);
 
-  // Timer State
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSessionSecs, setTimerSessionSecs] = useState(0);
+  // Time Tracking State
+  const [issueTimeEntries, setIssueTimeEntries] = useState([]);
+  const [issueActiveTimer, setIssueActiveTimer] = useState(null);
+  const [isLogTimeModalOpen, setIsLogTimeModalOpen] = useState(false);
+  const [isStopTimerModalOpen, setIsStopTimerModalOpen] = useState(false);
+
+  // Time Log Form State
+  const [logHours, setLogHours] = useState('1');
+  const [logMinutes, setLogMinutes] = useState('0');
+  const [logWorkType, setLogWorkType] = useState('Debugging');
+  const [logWorkNotes, setLogWorkNotes] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logBillable, setLogBillable] = useState(true);
+  const [submittingTimeLog, setSubmittingTimeLog] = useState(false);
+  const [aiGeneratingSummary, setAiGeneratingSummary] = useState(false);
+
+  // Stop Timer Form State
+  const [stopWorkType, setStopWorkType] = useState('Debugging');
+  const [stopWorkNotes, setStopWorkNotes] = useState('');
+  const [submittingStopTimer, setSubmittingStopTimer] = useState(false);
+
+  // Timer Tick Ref
+  const timerIntervalRef = useRef(null);
 
   // Reopen Modal State
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
@@ -89,6 +109,10 @@ export const IssueDetail = ({ issueId, onBack }) => {
   const [qualityScore, setQualityScore] = useState(null);
   const [piiWarning, setPiiWarning] = useState(null);
 
+  const WORK_TYPES = [
+    'Development', 'Debugging', 'Testing', 'Code Review', 
+    'Investigation', 'Documentation', 'Meeting', 'Deployment', 'Other'
+  ];
 
   const fetchDetails = async () => {
     try {
@@ -131,39 +155,166 @@ export const IssueDetail = ({ issueId, onBack }) => {
     }
   };
 
+  const fetchIssueTimeData = async () => {
+    try {
+      const [entries, timerRes] = await Promise.all([
+        api.getTimeEntries({ issue_id: issueId }).catch(() => []),
+        api.getActiveTimer().catch(() => null)
+      ]);
+      setIssueTimeEntries(entries || []);
+      setIssueActiveTimer(timerRes);
+    } catch (err) {
+      console.error("Failed loading time tracking data:", err);
+    }
+  };
 
   useEffect(() => {
     fetchDetails();
+    fetchIssueTimeData();
   }, [issueId]);
 
   useEffect(() => {
-    let interval = null;
-    if (timerRunning) {
-      interval = setInterval(() => {
-        setTimerSessionSecs(s => s + 1);
+    if (issueActiveTimer && issueActiveTimer.status === 'RUNNING') {
+      timerIntervalRef.current = setInterval(() => {
+        setIssueActiveTimer(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            elapsed_seconds: prev.elapsed_seconds + 1
+          };
+        });
       }, 1000);
     } else {
-      clearInterval(interval);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     }
-    return () => clearInterval(interval);
-  }, [timerRunning]);
+
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, [issueActiveTimer?.status]);
+
+  const formatSecondsToHM = (seconds) => {
+    if (!seconds || seconds <= 0) return '0m';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    if (m > 0) return `${m}m`;
+    return `${s}s`;
+  };
+
+  const getWorkTypeColor = (type) => {
+    switch (type) {
+      case 'Development': return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' };
+      case 'Debugging': return { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' };
+      case 'Testing': return { bg: 'rgba(168, 85, 247, 0.15)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' };
+      case 'Code Review': return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+      case 'Investigation': return { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
+      case 'Documentation': return { bg: 'rgba(14, 165, 233, 0.15)', text: '#0ea5e9', border: 'rgba(14, 165, 233, 0.3)' };
+      case 'Meeting': return { bg: 'rgba(236, 72, 153, 0.15)', text: '#ec4899', border: 'rgba(236, 72, 153, 0.3)' };
+      case 'Deployment': return { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' };
+      default: return { bg: 'rgba(107, 114, 128, 0.15)', text: '#9ca3af', border: 'rgba(107, 114, 128, 0.3)' };
+    }
+  };
 
   const handleStartTimer = async () => {
     try {
-      await api.startTimeEntry(issueId);
-      setTimerRunning(true);
+      await api.startTimer({ issue_id: parseInt(issueId), work_type: 'Debugging', work_notes: 'Working on defect fix' });
+      await fetchIssueTimeData();
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Failed to start timer');
     }
   };
 
   const handlePauseTimer = async () => {
     try {
-      await api.pauseTimeEntry(issueId, "Worked on fix session");
-      setTimerRunning(false);
-      setTimerSessionSecs(0);
+      await api.pauseTimer();
+      await fetchIssueTimeData();
+    } catch (err) {
+      setError(err.message || 'Failed to pause timer');
+    }
+  };
+
+  const handleResumeTimer = async () => {
+    try {
+      await api.resumeTimer();
+      await fetchIssueTimeData();
+    } catch (err) {
+      setError(err.message || 'Failed to resume timer');
+    }
+  };
+
+  const handleOpenStopModal = () => {
+    if (issueActiveTimer) {
+      setStopWorkType(issueActiveTimer.work_type || 'Debugging');
+      setStopWorkNotes(issueActiveTimer.work_notes || '');
+    }
+    setIsStopTimerModalOpen(true);
+  };
+
+  const handleConfirmStopTimer = async (e) => {
+    e.preventDefault();
+    setSubmittingStopTimer(true);
+    try {
+      await api.stopTimer({ work_type: stopWorkType, work_notes: stopWorkNotes });
+      setIsStopTimerModalOpen(false);
+      await fetchIssueTimeData();
+    } catch (err) {
+      setError(err.message || 'Failed to stop timer');
+    } finally {
+      setSubmittingStopTimer(false);
+    }
+  };
+
+  const handleSubmitTimeLog = async (e) => {
+    e.preventDefault();
+    setSubmittingTimeLog(true);
+    try {
+      await api.createTimeEntry({
+        issue_id: parseInt(issueId),
+        developer_id: user?.id,
+        hours: parseFloat(logHours) || 0,
+        minutes: parseFloat(logMinutes) || 0,
+        work_type: logWorkType,
+        work_notes: logWorkNotes,
+        logged_date: logDate,
+        billable: logBillable,
+        project_id: issue?.project_id,
+        sprint_id: issue?.sprint_id
+      });
+      setIsLogTimeModalOpen(false);
+      setLogWorkNotes('');
+      await fetchIssueTimeData();
+    } catch (err) {
+      setError(err.message || 'Failed to log time');
+    } finally {
+      setSubmittingTimeLog(false);
+    }
+  };
+
+  const handleAIPolishNote = async () => {
+    if (!logWorkNotes.trim()) return;
+    setAiGeneratingSummary(true);
+    try {
+      const res = await api.generateAIWorkSummary(logWorkNotes, issue?.title);
+      if (res?.summary) {
+        setLogWorkNotes(res.summary);
+      }
     } catch (err) {
       console.error(err);
+    } finally {
+      setAiGeneratingSummary(false);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    if (!window.confirm("Are you sure you want to delete this time entry?")) return;
+    try {
+      await api.deleteTimeEntry(entryId);
+      await fetchIssueTimeData();
+    } catch (err) {
+      setError(err.message || 'Failed deleting entry');
     }
   };
 
@@ -555,27 +706,169 @@ export const IssueDetail = ({ issueId, onBack }) => {
             )}
           </div>
 
-          {/* Stopwatch Bug Timer Widget */}
-          <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Clock size={22} color="#3b82f6" />
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase' }}>BUG WORK STOPWATCH TIMER</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{formatTimerStr(timerSessionSecs)} Logged</div>
+          {/* Professional Engineering Time Tracking & Work Logs Widget */}
+          <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(59, 130, 246, 0.03)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', fontWeight: 900, fontSize: '1.1rem' }}>
+                <Clock size={20} />
+                TIME TRACKING & WORK LOGS
               </div>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                onClick={() => setIsLogTimeModalOpen(true)}
+              >
+                <Plus size={14} /> Log Time
+              </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {!timerRunning ? (
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }} onClick={handleStartTimer}>
-                  <Play size={14} /> ▶ Start Timer
-                </button>
+            {/* Time Metrics & Progress Bar */}
+            {(() => {
+              const totalLoggedSecs = issueTimeEntries.reduce((sum, e) => sum + (e.duration_seconds || 0), 0) +
+                (issueActiveTimer && issueActiveTimer.issue_id === parseInt(issueId) ? (issueActiveTimer.elapsed_seconds || 0) : 0);
+              const totalLoggedHours = totalLoggedSecs / 3600;
+              const estimatedHours = issue?.est_resolution_hours || 4.0;
+              const progressPct = Math.min(100, Math.round((totalLoggedHours / estimatedHours) * 100));
+              const remainingHours = Math.max(0, estimatedHours - totalLoggedHours);
+              const isOverEstimate = totalLoggedHours > estimatedHours;
+
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                    <div style={{ background: 'rgba(0,0,0,0.03)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>LOGGED TIME</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-main)' }}>{formatSecondsToHM(totalLoggedSecs)}</span>
+                    </div>
+
+                    <div style={{ background: 'rgba(0,0,0,0.03)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>ESTIMATED</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-main)' }}>{estimatedHours}h</span>
+                    </div>
+
+                    <div style={{ background: 'rgba(0,0,0,0.03)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>REMAINING</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 900, color: isOverEstimate ? '#ef4444' : '#10b981' }}>
+                        {isOverEstimate ? `+${(totalLoggedHours - estimatedHours).toFixed(1)}h over` : `${remainingHours.toFixed(1)}h`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
+                      <span>Budget Spent ({progressPct}%)</span>
+                      <span>{formatSecondsToHM(totalLoggedSecs)} / {estimatedHours}h</span>
+                    </div>
+                    <div style={{ height: '8px', width: '100%', background: 'rgba(0,0,0,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ 
+                        height: '100%', 
+                        width: `${Math.min(progressPct, 100)}%`, 
+                        background: isOverEstimate ? '#ef4444' : progressPct > 85 ? '#f59e0b' : '#3b82f6', 
+                        borderRadius: '4px',
+                        transition: 'width 0.4s ease' 
+                      }} />
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Active Live Timer Banner */}
+            <div style={{ padding: '0.85rem 1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--border-color)', marginBottom: '1.25rem' }}>
+              {issueActiveTimer && issueActiveTimer.issue_id === parseInt(issueId) ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: issueActiveTimer.status === 'RUNNING' ? '#10b981' : '#f59e0b', display: 'inline-block' }} />
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                        Active Timer ({issueActiveTimer.status})
+                      </div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#3b82f6', fontFamily: 'monospace' }}>
+                        {formatSecondsToHM(issueActiveTimer.elapsed_seconds)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {issueActiveTimer.status === 'RUNNING' ? (
+                      <button className="btn btn-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }} onClick={handlePauseTimer}>
+                        <Pause size={14} /> Pause
+                      </button>
+                    ) : (
+                      <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }} onClick={handleResumeTimer}>
+                        <Play size={14} /> Resume
+                      </button>
+                    )}
+                    <button className="btn btn-danger" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }} onClick={handleOpenStopModal}>
+                      <Square size={14} /> Stop & Log
+                    </button>
+                  </div>
+                </div>
+              ) : issueActiveTimer ? (
+                <div style={{ fontSize: '0.82rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <AlertCircle size={16} /> Active timer running on Issue #{issueActiveTimer.issue_id}.
+                </div>
               ) : (
-                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', background: '#ef4444', color: '#fff' }} onClick={handlePauseTimer}>
-                  <Pause size={14} /> ⏸ Pause Timer
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>No live timer running for this issue.</span>
+                  <button className="btn btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }} onClick={handleStartTimer}>
+                    <Play size={14} /> ▶ Start Live Timer
+                  </button>
+                </div>
               )}
             </div>
+
+            {/* Work Logs Feed */}
+            <div>
+              <h4 style={{ fontSize: '0.88rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Logged Work History ({issueTimeEntries.length})
+              </h4>
+
+              {issueTimeEntries.length === 0 ? (
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No work logs recorded yet for this defect.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {issueTimeEntries.map(entry => {
+                    const wtStyle = getWorkTypeColor(entry.work_type);
+                    return (
+                      <div key={entry.id} style={{ padding: '0.75rem 0.9rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: wtStyle.bg, color: wtStyle.text, border: `1px solid ${wtStyle.border}`, fontWeight: 700 }}>
+                              {entry.work_type}
+                            </span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                              {entry.developer_name}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              • {entry.logged_date}
+                            </span>
+                          </div>
+                          {entry.work_notes && (
+                            <p style={{ fontSize: '0.82rem', color: 'var(--text-main)', marginTop: '0.2rem', whiteSpace: 'pre-wrap' }}>
+                              {entry.work_notes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '6px' }}>
+                            {entry.formatted_duration || formatSecondsToHM(entry.duration_seconds)}
+                          </span>
+                          <button 
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px' }}
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            title="Delete work log"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* QA Interactive Verification Checklist */}
@@ -851,6 +1144,112 @@ export const IssueDetail = ({ issueId, onBack }) => {
         onClose={() => setIsOriginOpen(false)}
         issueId={issueId}
       />
+
+      {/* Manual Log Time Modal */}
+      {isLogTimeModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '540px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6' }}>
+                <Clock size={20} /> Log Time on Defect
+              </h3>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setIsLogTimeModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitTimeLog} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Issue</label>
+                <input type="text" className="form-input" value={`#${issue.id} - ${issue.title}`} disabled style={{ background: 'rgba(0,0,0,0.04)' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Hours</label>
+                  <input type="number" step="0.5" min="0" className="form-input" value={logHours} onChange={e => setLogHours(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="form-label">Minutes</label>
+                  <input type="number" step="5" min="0" max="59" className="form-input" value={logMinutes} onChange={e => setLogMinutes(e.target.value)} required />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Work Type</label>
+                  <select className="form-select" value={logWorkType} onChange={e => setLogWorkType(e.target.value)}>
+                    {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label">Date</label>
+                  <input type="date" className="form-input" value={logDate} onChange={e => setLogDate(e.target.value)} required />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>Work Notes / Summary</label>
+                  <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', color: '#10b981' }} onClick={handleAIPolishNote} disabled={aiGeneratingSummary || !logWorkNotes.trim()}>
+                    {aiGeneratingSummary ? <Loader2 className="animate-spin" size={12} /> : <Sparkles size={12} />}
+                    AI Polish Notes
+                  </button>
+                </div>
+                <textarea className="form-textarea" rows={3} placeholder="Describe what you worked on..." value={logWorkNotes} onChange={e => setLogWorkNotes(e.target.value)} />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input type="checkbox" id="modalBillableToggle" checked={logBillable} onChange={e => setLogBillable(e.target.checked)} />
+                <label htmlFor="modalBillableToggle" style={{ fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>Billable Engineering Hours</label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsLogTimeModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submittingTimeLog}>
+                  {submittingTimeLog ? 'Logging...' : 'Save Work Log'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stop Active Timer Modal */}
+      {isStopTimerModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '480px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Square size={18} /> Stop Timer & Save Work Log
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+              Enter final work notes before saving this active timer session into your timesheet.
+            </p>
+
+            <form onSubmit={handleConfirmStopTimer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Work Type</label>
+                <select className="form-select" value={stopWorkType} onChange={e => setStopWorkType(e.target.value)}>
+                  {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Work Notes</label>
+                <textarea className="form-textarea" rows={3} placeholder="Summary of work completed during timer session..." value={stopWorkNotes} onChange={e => setStopWorkNotes(e.target.value)} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsStopTimerModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-danger" disabled={submittingStopTimer}>
+                  {submittingStopTimer ? 'Saving...' : 'Stop & Save Log'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

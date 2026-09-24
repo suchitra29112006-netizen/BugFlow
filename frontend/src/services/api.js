@@ -337,6 +337,52 @@ const getDemoFallbackForEndpoint = (endpoint) => {
     return sampleUsers;
   }
 
+  // Time Tracking Summary & Analytics Fallbacks
+  if (ep.includes('/time/summary')) {
+    return {
+      total_logged_seconds: 19800,
+      total_logged_formatted: "5h 30m",
+      today_logged_seconds: 4800,
+      today_logged_formatted: "1h 20m",
+      this_week_logged_seconds: 19800,
+      this_week_logged_formatted: "5h 30m",
+      total_entries_count: 4,
+      active_timer: null
+    };
+  }
+
+  if (ep.includes('/time/analytics')) {
+    return {
+      by_work_type: [
+        { work_type: "Development", seconds: 7800, hours: 2.2, formatted: "2h 10m", percentage: 39.4 },
+        { work_type: "Debugging", seconds: 4800, hours: 1.3, formatted: "1h 20m", percentage: 24.2 },
+        { work_type: "Code Review", seconds: 4500, hours: 1.3, formatted: "1h 15m", percentage: 22.7 },
+        { work_type: "Testing", seconds: 2700, hours: 0.8, formatted: "45m", percentage: 13.6 }
+      ],
+      by_developer: [
+        { developer_name: "George Dev", seconds: 9300, hours: 2.6, formatted: "2h 35m" },
+        { developer_name: "Admin User", seconds: 7800, hours: 2.2, formatted: "2h 10m" },
+        { developer_name: "Alex Rivera", seconds: 2700, hours: 0.8, formatted: "45m" }
+      ],
+      by_project: [
+        { project_name: "BugFlow Core Platform", seconds: 19800, hours: 5.5, formatted: "5h 30m" }
+      ],
+      by_issue: [
+        { issue_id: 1, issue_title: "Verify Vercel SPA routing fallback", logged_seconds: 4800, logged_formatted: "1h 20m", estimated_hours: 5.0, estimated_formatted: "5h", variance_hours: -3.7 }
+      ],
+      daily_trend: [
+        { date: "Sep 18", full_date: "2026-09-18", seconds: 4500, hours: 1.3, formatted: "1h 15m" },
+        { date: "Sep 19", full_date: "2026-09-19", seconds: 2700, hours: 0.8, formatted: "45m" },
+        { date: "Sep 20", full_date: "2026-09-20", seconds: 7800, hours: 2.2, formatted: "2h 10m" },
+        { date: "Sep 21", full_date: "2026-09-21", seconds: 4800, hours: 1.3, formatted: "1h 20m" }
+      ]
+    };
+  }
+
+  if (ep.includes('/time/active-timer')) {
+    return { active: false, timer: null };
+  }
+
   // People Overview
   if (ep.includes('/people/overview')) {
     return {
@@ -1389,6 +1435,33 @@ export const api = {
   aiSearchDocuments: (query, category = null, limit = 10) => request('/documents/ai/search', { method: 'POST', body: JSON.stringify({ query, category, limit }) }),
   askKnowledgeAI: (question, documentId = null, contextCategory = null) => request('/documents/ai/ask', { method: 'POST', body: JSON.stringify({ question, document_id: documentId, context_category: contextCategory }) }),
   executeAIDocumentAction: (action, documentId = null, promptContext = null) => request('/documents/ai/actions', { method: 'POST', body: JSON.stringify({ action, document_id: documentId, prompt_context: promptContext }) }),
+
+  // Engineering Time Tracking & Work Logs APIs
+  getTimeEntries: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.issue_id) query.append('issue_id', params.issue_id);
+    if (params.developer_id) query.append('developer_id', params.developer_id);
+    if (params.project_id) query.append('project_id', params.project_id);
+    if (params.team_id) query.append('team_id', params.team_id);
+    if (params.sprint_id) query.append('sprint_id', params.sprint_id);
+    if (params.work_type) query.append('work_type', params.work_type);
+    if (params.search) query.append('search', params.search);
+    if (params.start_date) query.append('start_date', params.start_date);
+    if (params.end_date) query.append('end_date', params.end_date);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/time/entries${qStr}`);
+  },
+  getTimeSummary: () => request('/time/summary'),
+  getTimeAnalytics: () => request('/time/analytics'),
+  createTimeEntry: (data) => request('/time/entries', { method: 'POST', body: JSON.stringify(data) }),
+  updateTimeEntry: (id, data) => request(`/time/entries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTimeEntry: (id) => request(`/time/entries/${id}`, { method: 'DELETE' }),
+  getActiveTimer: () => request('/time/active-timer'),
+  startTimer: (data) => request('/time/timer/start', { method: 'POST', body: JSON.stringify(data) }),
+  pauseTimer: () => request('/time/timer/pause', { method: 'POST' }),
+  resumeTimer: () => request('/time/timer/resume', { method: 'POST' }),
+  stopTimer: (data) => request('/time/timer/stop', { method: 'POST', body: JSON.stringify(data) }),
+  generateAIWorkSummary: (raw_notes, issue_title = null) => request('/time/generate-summary', { method: 'POST', body: JSON.stringify({ raw_notes, issue_title }) }),
 };
 
 

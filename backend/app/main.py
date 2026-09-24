@@ -274,6 +274,38 @@ def apply_schema_migrations(target_engine=None):
             if "updated_at" not in columns_docs:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN updated_at DATETIME;"))
 
+            # Check time_entries table columns
+            result_time = conn.execute(text("PRAGMA table_info(time_entries);"))
+            columns_time = [row[1] for row in result_time.fetchall()]
+            if "duration_seconds" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN duration_seconds INTEGER DEFAULT 0;"))
+            if "work_type" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN work_type VARCHAR(50) DEFAULT 'Development';"))
+            if "logged_date" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN logged_date DATETIME;"))
+            if "project_id" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN project_id INTEGER REFERENCES projects(id);"))
+            if "squad_id" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN squad_id INTEGER REFERENCES teams(id);"))
+            if "sprint_id" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN sprint_id INTEGER REFERENCES sprints(id);"))
+            if "billable" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN billable BOOLEAN DEFAULT 1;"))
+            if "updated_at" not in columns_time:
+                conn.execute(text("ALTER TABLE time_entries ADD COLUMN updated_at DATETIME;"))
+
+            # Check active_timers table columns
+            result_timer = conn.execute(text("PRAGMA table_info(active_timers);"))
+            columns_timer = [row[1] for row in result_timer.fetchall()]
+            if "paused_at" not in columns_timer:
+                conn.execute(text("ALTER TABLE active_timers ADD COLUMN paused_at DATETIME;"))
+            if "elapsed_seconds" not in columns_timer:
+                conn.execute(text("ALTER TABLE active_timers ADD COLUMN elapsed_seconds INTEGER DEFAULT 0;"))
+            if "work_type" not in columns_timer:
+                conn.execute(text("ALTER TABLE active_timers ADD COLUMN work_type VARCHAR(50) DEFAULT 'Debugging';"))
+            if "work_notes" not in columns_timer:
+                conn.execute(text("ALTER TABLE active_timers ADD COLUMN work_notes TEXT;"))
+
     except Exception as e:
         print(f"Notice: Migration check info: {e}")
 
@@ -564,6 +596,70 @@ def seed_initial_data():
         if db.query(Incident).count() == 0:
             inc = Incident(incident_code="INC-001", title="Database Pool Connection Spike", severity=FindingSeverity.HIGH, status="RESOLVED", affected_components="Database / Backend API", postmortem_text="Connection pool exhaustion resolved by enabling pool pre-ping.")
             db.add(inc)
+            db.commit()
+
+        # 16. Seed Realistic Time Entries (Work Logs)
+        if db.query(TimeEntry).count() == 0:
+            all_issues = db.query(Issue).all()
+            all_squads = db.query(Team).all()
+            all_sprints = db.query(Sprint).all()
+            now = datetime.utcnow()
+
+            sample_logs = [
+                {
+                    "issue": all_issues[0] if len(all_issues) > 0 else None,
+                    "user": dev_user,
+                    "duration_seconds": 4800, # 1h 20m
+                    "work_type": "Debugging",
+                    "note": "Investigated payment gateway timeout, identified retry-handling defect and implemented retry logic.",
+                    "days_ago": 0,
+                    "billable": True
+                },
+                {
+                    "issue": all_issues[1] if len(all_issues) > 1 else (all_issues[0] if len(all_issues) > 0 else None),
+                    "user": admin_user,
+                    "duration_seconds": 7800, # 2h 10m
+                    "work_type": "Development",
+                    "note": "Implemented validation for malformed API payloads and added error handling.",
+                    "days_ago": 1,
+                    "billable": True
+                },
+                {
+                    "issue": all_issues[2] if len(all_issues) > 2 else (all_issues[0] if len(all_issues) > 0 else None),
+                    "user": qa_user,
+                    "duration_seconds": 2700, # 45m
+                    "work_type": "Testing",
+                    "note": "Performed regression testing for checkout and payment failure scenarios.",
+                    "days_ago": 2,
+                    "billable": True
+                },
+                {
+                    "issue": all_issues[3] if len(all_issues) > 3 else (all_issues[0] if len(all_issues) > 0 else None),
+                    "user": dev_user,
+                    "duration_seconds": 4500, # 1h 15m
+                    "work_type": "Code Review",
+                    "note": "Reviewed authentication changes and suggested improvements to token validation.",
+                    "days_ago": 3,
+                    "billable": True
+                }
+            ]
+
+            for sl in sample_logs:
+                if sl["issue"]:
+                    te = TimeEntry(
+                        issue_id=sl["issue"].id,
+                        user_id=sl["user"].id,
+                        duration_seconds=sl["duration_seconds"],
+                        hours_logged=round(sl["duration_seconds"] / 3600.0, 2),
+                        work_type=sl["work_type"],
+                        note=sl["note"],
+                        logged_date=now - timedelta(days=sl["days_ago"]),
+                        project_id=sl["issue"].project_id,
+                        squad_id=sl["issue"].team_id or (all_squads[0].id if all_squads else None),
+                        sprint_id=sl["issue"].sprint_id or (all_sprints[0].id if all_sprints else None),
+                        billable=sl["billable"]
+                    )
+                    db.add(te)
             db.commit()
 
         print("Comprehensive BugFlow v4.0 demo dataset successfully seeded!")
