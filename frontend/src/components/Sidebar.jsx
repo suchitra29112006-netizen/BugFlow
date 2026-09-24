@@ -3,215 +3,184 @@ import {
   Home as HomeIcon, LayoutDashboard, FolderKanban, Bug, Kanban, Target, 
   Clock, ShieldAlert, Zap, Sparkles, FileText, Users, Activity, BarChart3, 
   ShieldCheck, Gauge, Brain, Settings, Building2, UserCheck, Layers,
-  HelpCircle, CheckSquare, Rocket, AlertTriangle, BookOpen, ChevronDown, ChevronRight
+  HelpCircle, CheckSquare, Rocket, AlertTriangle, BookOpen, ChevronDown, ChevronRight,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
   const sections = [
     {
-      id: 'home_workspace',
-      title: 'HOME & WORKSPACE',
+      id: 'workspace',
+      title: 'WORKSPACE',
       items: [
         { id: 'dashboard', label: 'Command Center', icon: LayoutDashboard },
         { id: 'home', label: 'Home Feed', icon: HomeIcon },
-      ]
-    },
-    {
-      id: 'organization',
-      title: 'ORGANIZATION',
-      items: [
-        { id: 'org', label: 'Organization Overview', icon: Building2 },
-        { id: 'departments', label: 'Departments', icon: Layers },
-        { id: 'workspaces', label: 'Workspaces', icon: FolderKanban },
-        { id: 'people', label: 'People & Workload', icon: UserCheck },
-      ]
-    },
-    {
-      id: 'planning_work',
-      title: 'PLANNING & WORK',
-      items: [
-        { id: 'goals', label: 'Goals & OKRs', icon: Target },
-        { id: 'projects', label: 'Projects', icon: FolderKanban },
         { id: 'issues', label: 'Bugs & Tasks', icon: Bug },
-        { id: 'sprints', label: 'Sprints & Calendar', icon: Kanban },
-        { id: 'milestones', label: 'Milestones', icon: Layers },
-        { id: 'askportal', label: 'Ask & Bug Portal', icon: HelpCircle },
+        { id: 'projects', label: 'Projects', icon: FolderKanban },
+        { id: 'sprints', label: 'Sprints & Board', icon: Kanban },
+        { id: 'goals', label: 'Goals & OKRs', icon: Target },
       ]
     },
     {
-      id: 'quality_ops',
-      title: 'QUALITY & OPERATIONS',
+      id: 'people',
+      title: 'PEOPLE & TEAMS',
       items: [
-        { id: 'testmgmt', label: 'QA & Test Management', icon: CheckSquare },
-        { id: 'releases', label: 'Releases & Deployments', icon: Rocket },
+        { id: 'teams', label: 'Teams & Squads', icon: Users },
+        { id: 'people', label: 'People & Workload', icon: UserCheck },
+        { id: 'departments', label: 'Departments', icon: Layers },
+      ]
+    },
+    {
+      id: 'engineering',
+      title: 'ENGINEERING',
+      items: [
+        { id: 'timesheets', label: 'Time Tracking', icon: Clock },
+        { id: 'analytics', label: 'Defect Analytics', icon: BarChart3 },
+        { id: 'performance', label: 'Database Advisor', icon: Gauge },
+        { id: 'testmgmt', label: 'QA & Testing', icon: CheckSquare },
+        { id: 'releases', label: 'Releases & Deploy', icon: Rocket },
         { id: 'security', label: 'Security Center', icon: ShieldCheck },
         { id: 'sla', label: 'SLA Engine', icon: ShieldAlert },
-        { id: 'performance', label: 'Performance Center', icon: Gauge },
       ]
     },
     {
       id: 'intelligence',
-      title: 'INTELLIGENCE & KNOWLEDGE',
+      title: 'AI & KNOWLEDGE',
       items: [
         { id: 'intelligence', label: 'Defect Intelligence', icon: Brain },
-        { id: 'kb', label: 'Engineering Knowledge Hub', icon: BookOpen },
-        { id: 'analytics', label: 'Defect Analytics', icon: BarChart3 },
+        { id: 'documents', label: 'Engineering Hub', icon: FileText },
+        { id: 'askportal', label: 'Ask Bug Portal', icon: HelpCircle },
       ]
     },
     {
-      id: 'utilities',
-      title: 'ENGINEERING UTILITIES',
+      id: 'system',
+      title: 'SYSTEM',
       items: [
-        { id: 'timesheets', label: 'Time Tracking', icon: Clock },
-        { id: 'documents', label: 'Engineering Knowledge Hub', icon: FileText },
-      ]
-    },
-    {
-      id: 'admin',
-      title: 'ADMIN & SETTINGS',
-      items: [
-        { id: 'settings', label: '⚙️ Settings Hub', icon: Settings },
+        { id: 'org', label: 'Organization', icon: Building2 },
+        { id: 'workspaces', label: 'Workspaces', icon: FolderKanban },
+        { id: 'settings', label: 'Settings Hub', icon: Settings },
       ]
     }
   ];
 
-  // State map tracking expanded/collapsed status of each domain category
   const [openSections, setOpenSections] = useState(() => {
     const initialState = {};
-    sections.forEach(sec => {
-      initialState[sec.id] = true;
-    });
+    sections.forEach(sec => { initialState[sec.id] = true; });
     return initialState;
   });
 
-  // Auto-expand section when active tab changes
-  useEffect(() => {
-    if (!activeTab) return;
-    const parentSection = sections.find(sec => sec.items.some(item => item.id === activeTab));
-    if (parentSection && !openSections[parentSection.id]) {
-      setOpenSections(prev => ({ ...prev, [parentSection.id]: true }));
-    }
-  }, [activeTab]);
-
   const toggleSection = (sectionId) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId]
-    }));
+    setOpenSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
   return (
-    <aside 
-      className="glass-panel" 
-      style={{ 
-        width: '270px', 
-        borderRadius: 0, 
-        borderTop: 0, 
-        borderBottom: 0, 
-        borderLeft: 0, 
-        padding: '1.25rem 0.85rem', 
-        minHeight: 'calc(100vh - 65px)',
-        userSelect: 'none'
-      }}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-        {sections.map((sec) => {
-          const isOpen = !!openSections[sec.id];
-          const hasActiveChild = sec.items.some(item => item.id === activeTab);
+    <aside style={{ 
+      width: collapsed ? '64px' : '230px', 
+      transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      background: 'var(--bg-sidebar)', 
+      borderRight: '1px solid var(--border-color)',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: 'calc(100vh - 52px)',
+      userSelect: 'none',
+      zIndex: 90
+    }}>
+      
+      {/* Collapse / Expand Toggle Header */}
+      <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        {!collapsed && (
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ENGINEERING WORKSPACE
+          </span>
+        )}
+        <button 
+          style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
+      </div>
 
+      {/* Navigation Sections */}
+      <div style={{ flex: 1, padding: '0.75rem 0.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {sections.map(section => {
+          const isOpen = openSections[section.id];
           return (
-            <div 
-              key={sec.id}
-              style={{
-                borderRadius: '8px',
-                backgroundColor: hasActiveChild ? 'rgba(16, 185, 129, 0.04)' : 'transparent',
-                padding: '0.2rem',
-                transition: 'background-color 0.2s ease'
-              }}
-            >
-              {/* Main Domain Header Button */}
-              <button
-                onClick={() => toggleSection(sec.id)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.55rem 0.65rem',
-                  border: 'none',
-                  background: 'transparent',
-                  color: hasActiveChild ? '#10b981' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  borderRadius: '6px',
-                  transition: 'color 0.2s ease, background-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {sec.title}
-                </span>
-                {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-              </button>
-
-              {/* Collapsible Sub-Domains Navigation */}
-              {isOpen && (
-                <nav 
+            <div key={section.id}>
+              
+              {!collapsed && (
+                <div 
                   style={{ 
                     display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '0.2rem',
-                    marginTop: '0.25rem',
-                    paddingLeft: '0.25rem'
+                    alignItems: 'center', 
+                    justify: 'space-between', 
+                    padding: '0.25rem 0.5rem', 
+                    cursor: 'pointer',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    marginBottom: '0.25rem'
                   }}
+                  onClick={() => toggleSection(section.id)}
                 >
-                  {sec.items.map((item) => {
+                  <span>{section.title}</span>
+                  {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </div>
+              )}
+
+              {(isOpen || collapsed) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {section.items.map(item => {
                     const Icon = item.icon;
                     const isActive = activeTab === item.id;
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setActiveTab(item.id)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.625rem 0.75rem',
-                          borderRadius: '8px',
+                          gap: '0.65rem',
+                          padding: collapsed ? '0.55rem 0' : '0.45rem 0.65rem',
+                          justifyContent: collapsed ? 'center' : 'flex-start',
+                          borderRadius: '6px',
                           border: 'none',
-                          background: isActive 
-                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.08) 100%)' 
-                            : 'transparent',
-                          color: isActive ? '#10b981' : 'var(--text-main)',
+                          background: isActive ? 'rgba(16, 185, 129, 0.18)' : 'transparent',
+                          color: isActive ? '#34d399' : 'rgba(255,255,255,0.75)',
+                          fontSize: '0.82rem',
                           fontWeight: isActive ? 700 : 500,
-                          fontSize: '0.92rem',
                           cursor: 'pointer',
-                          textAlign: 'left',
-                          width: '100%',
-                          borderLeft: isActive ? '3px solid #10b981' : '3px solid transparent',
-                          transition: 'all 0.18s ease'
+                          transition: 'all 0.15s ease-in-out',
+                          textAlign: 'left'
                         }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
+                        onClick={() => setActiveTab(item.id)}
+                        title={collapsed ? item.label : undefined}
                       >
-                        <Icon size={17} style={{ strokeWidth: isActive ? 2.3 : 1.8 }} />
-                        {item.label}
+                        <Icon size={16} color={isActive ? '#34d399' : 'rgba(255,255,255,0.6)'} />
+                        {!collapsed && <span>{item.label}</span>}
                       </button>
                     );
                   })}
-                </nav>
+                </div>
               )}
+
             </div>
           );
         })}
       </div>
+
+      {/* Sidebar Footer Context */}
+      {!collapsed && (
+        <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>BugFlow v3.0 Pro</span>
+          <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '3px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', fontWeight: 700 }}>ACTIVE</span>
+        </div>
+      )}
+
     </aside>
   );
 };

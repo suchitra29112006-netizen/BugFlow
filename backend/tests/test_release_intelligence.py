@@ -3,13 +3,24 @@ from datetime import datetime, timedelta
 from app.models.release_management import Release
 from app.models.project import Project
 from app.models.issue import Issue, IssueStatus, IssueSeverity
+from app.models.user import User, UserRole
 from app.models.milestone import Milestone
 from app.services.release_intelligence_service import ReleaseIntelligenceService
 from app.services.release_note_validator import ReleaseNoteValidator
 
+def get_or_create_owner(db):
+    usr = db.query(User).first()
+    if not usr:
+        usr = User(name="Test Owner", email="owner@bugflow.io", password_hash="hash", role=UserRole.ADMIN)
+        db.add(usr)
+        db.commit()
+        db.refresh(usr)
+    return usr.id
+
 def test_closed_defects_zero_no_hallucination(db):
     """Test 1: closed_defects = 0 -> Validator strips any mention of resolved defects."""
-    proj = Project(name="Release Test Proj 1", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 1", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -29,7 +40,8 @@ def test_closed_defects_zero_no_hallucination(db):
 
 def test_completed_tasks_zero_no_hallucination(db):
     """Test 2: completed_tasks = 0 -> Validator strips claims of added features."""
-    proj = Project(name="Release Test Proj 2", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 2", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -48,7 +60,8 @@ def test_completed_tasks_zero_no_hallucination(db):
 
 def test_no_qa_records_behavior(db):
     """Test 3: No QA records -> Output states QA data unavailable."""
-    proj = Project(name="Release Test Proj 3", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 3", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -66,7 +79,8 @@ def test_no_qa_records_behavior(db):
 
 def test_github_disconnected_behavior(db):
     """Test 4: GitHub disconnected -> No fake commits or PRs."""
-    proj = Project(name="Release Test Proj 4", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 4", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -83,7 +97,8 @@ def test_github_disconnected_behavior(db):
 
 def test_verified_completed_task_evidence(db):
     """Test 5: Verified completed task -> Mapped in evidence trace."""
-    proj = Project(name="Release Test Proj 5", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 5", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -97,7 +112,7 @@ def test_verified_completed_task_evidence(db):
         work_item_type="FEATURE",
         status=IssueStatus.CLOSED,
         project_id=proj.id,
-        reporter_id=1
+        reporter_id=owner_id
     )
     db.add(task)
     db.commit()
@@ -111,7 +126,8 @@ def test_verified_completed_task_evidence(db):
 
 def test_open_critical_defect_in_risk(db):
     """Test 6: Open critical bug -> Mentions bug in risk factors and known issues."""
-    proj = Project(name="Release Test Proj 6", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 6", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -126,7 +142,7 @@ def test_open_critical_defect_in_risk(db):
         severity=IssueSeverity.CRITICAL,
         status=IssueStatus.OPEN,
         project_id=proj.id,
-        reporter_id=1
+        reporter_id=owner_id
     )
     db.add(crit_bug)
     db.commit()
@@ -139,7 +155,8 @@ def test_open_critical_defect_in_risk(db):
 
 def test_data_consistency_across_queries(db):
     """Test 7: Canonical metrics in facts match UI metrics."""
-    proj = Project(name="Release Test Proj 7", description="Test Proj")
+    owner_id = get_or_create_owner(db)
+    proj = Project(name="Release Test Proj 7", description="Test Proj", owner_id=owner_id)
     db.add(proj)
     db.commit()
 
@@ -147,8 +164,8 @@ def test_data_consistency_across_queries(db):
     db.add(rel)
     db.commit()
 
-    bug1 = Issue(title="B1", description="D1", work_item_type="BUG", status=IssueStatus.CLOSED, project_id=proj.id, reporter_id=1)
-    bug2 = Issue(title="B2", description="D2", work_item_type="BUG", status=IssueStatus.OPEN, project_id=proj.id, reporter_id=1)
+    bug1 = Issue(title="B1", description="D1", work_item_type="BUG", status=IssueStatus.CLOSED, project_id=proj.id, reporter_id=owner_id)
+    bug2 = Issue(title="B2", description="D2", work_item_type="BUG", status=IssueStatus.OPEN, project_id=proj.id, reporter_id=owner_id)
     db.add_all([bug1, bug2])
     db.commit()
 
