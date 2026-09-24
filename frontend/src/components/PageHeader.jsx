@@ -14,16 +14,26 @@ export const PageHeader = ({
     <div style={{ marginBottom: '1.25rem' }}>
       
       {/* Breadcrumbs Row */}
-      {breadcrumbs.length > 0 && (
+      {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
         <nav className="breadcrumb">
-          {breadcrumbs.map((crumb, idx) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && <ChevronRight size={12} color="var(--text-dim)" />}
-              <span className={`breadcrumb-item ${idx === breadcrumbs.length - 1 ? 'active' : ''}`}>
-                {crumb}
-              </span>
-            </React.Fragment>
-          ))}
+          {breadcrumbs.map((crumb, idx) => {
+            const isLast = idx === breadcrumbs.length - 1;
+            const label = typeof crumb === 'string' ? crumb : (crumb?.label || '');
+            const onClick = typeof crumb === 'object' ? crumb?.onClick : null;
+
+            return (
+              <React.Fragment key={idx}>
+                {idx > 0 && <ChevronRight size={12} color="var(--text-dim)" />}
+                <span 
+                  className={`breadcrumb-item ${isLast ? 'active' : ''}`}
+                  style={{ cursor: onClick ? 'pointer' : 'default' }}
+                  onClick={onClick ? onClick : undefined}
+                >
+                  {label}
+                </span>
+              </React.Fragment>
+            );
+          })}
         </nav>
       )}
 
@@ -49,18 +59,22 @@ export const PageHeader = ({
       </div>
 
       {/* Sub-Navigation Tabs Row */}
-      {tabs && tabs.length > 0 && (
+      {Array.isArray(tabs) && tabs.length > 0 && (
         <div style={{ display: 'flex', gap: '0.4rem', borderBottom: '1px solid var(--border-color)', marginTop: '1rem', paddingBottom: '0.4rem', flexWrap: 'wrap' }}>
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
+          {tabs.map((tab, idx) => {
+            const key = typeof tab === 'string' ? tab : (tab.key || tab.id || tab.label || idx);
+            const label = typeof tab === 'string' ? tab : tab.label;
+            const count = typeof tab === 'object' ? tab.count : undefined;
+            const isActive = activeTab === key;
+
             return (
               <button
-                key={tab.id}
+                key={key}
                 className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-                onClick={() => onTabChange && onTabChange(tab.id)}
+                onClick={() => onTabChange && onTabChange(key)}
               >
-                {tab.label} {tab.count !== undefined && `(${tab.count})`}
+                {label} {count !== undefined && `(${count})`}
               </button>
             );
           })}
