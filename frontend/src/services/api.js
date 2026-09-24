@@ -1462,6 +1462,29 @@ export const api = {
   resumeTimer: () => request('/time/timer/resume', { method: 'POST' }),
   stopTimer: (data) => request('/time/timer/stop', { method: 'POST', body: JSON.stringify(data) }),
   generateAIWorkSummary: (raw_notes, issue_title = null) => request('/time/generate-summary', { method: 'POST', body: JSON.stringify({ raw_notes, issue_title }) }),
+
+  // Database Performance & Observability Center APIs
+  getPerformanceReport: () => request('/performance/report'),
+  getDatabaseHealth: () => request('/performance/health'),
+  getCapturedQueries: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.endpoint) query.append('endpoint', params.endpoint);
+    if (params.method) query.append('method', params.method);
+    if (params.slow_only) query.append('slow_only', 'true');
+    if (params.error_only) query.append('error_only', 'true');
+    if (params.n1_only) query.append('n1_only', 'true');
+    if (params.sort_by) query.append('sort_by', params.sort_by);
+    if (params.slow_threshold_ms) query.append('slow_threshold_ms', params.slow_threshold_ms);
+    const qStr = query.toString() ? `?${query.toString()}` : '';
+    return request(`/performance/queries${qStr}`);
+  },
+  getSlowQueries: (threshold_ms = 100.0) => request(`/performance/slow-queries?threshold_ms=${threshold_ms}`),
+  getNPlusOneCandidates: () => request('/performance/n-plus-one'),
+  getIndexRecommendations: () => request('/performance/index-recommendations'),
+  getEndpointPerformance: () => request('/performance/endpoints'),
+  getConnectionPoolMetrics: () => request('/performance/pool'),
+  clearPerformanceTelemetry: () => request('/performance/clear-telemetry', { method: 'POST' }),
 };
 
 

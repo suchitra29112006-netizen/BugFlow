@@ -1,9 +1,11 @@
 import os
-from fastapi import FastAPI, Depends
+import time
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, event, Engine
+from app.services.performance_service import request_context_var, query_performance_advisor
 
 from app.database.connection import engine, Base, SessionLocal, get_db
 from app.models import (
@@ -339,6 +341,64 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# SQLAlchemy Event Instrumentation for Database Performance & Observability
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault("query_start_time", []).append(time.time())
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total_ms = 0.0
+    if conn.info.get("query_start_time"):
+        start_t = conn.info["query_start_time"].pop()
+        total_ms = (time.time() - start_t) * 1000.0
+
+    row_cnt = cursor.rowcount if hasattr(cursor, "rowcount") and cursor.rowcount > 0 else 0
+    query_performance_advisor.record_query_execution(
+        statement=statement,
+        execution_time_ms=total_ms,
+        rows_returned=row_cnt,
+        is_error=False
+    )
+
+
+@event.listens_for(Engine, "handle_error")
+def handle_error(exception_context):
+    statement = exception_context.statement or "UNKNOWN SQL"
+    err_msg = str(exception_context.original_exception) if exception_context.original_exception else "Database execution error"
+    query_performance_advisor.record_query_execution(
+        statement=statement,
+        execution_time_ms=0.0,
+        rows_returned=0,
+        is_error=True,
+        error_msg=err_msg
+    )
+
+
+# FastAPI HTTP Context Middleware for Query Telemetry
+@app.middleware("http")
+async def query_telemetry_context_middleware(request: Request, call_next):
+    ep_str = f"{request.method} {request.url.path}"
+    is_advisor = request.url.path.startswith("/api/performance")
+
+    token = request_context_var.set({
+        "endpoint": ep_str,
+        "method": request.method,
+        "path": request.url.path,
+        "is_advisor": is_advisor,
+        "queries": []
+    })
+    try:
+        response = await call_next(request)
+        ctx = request_context_var.get()
+        if not is_advisor and ctx and ctx.get("queries"):
+            query_performance_advisor.record_request_summary(ep_str, ctx["queries"])
+        return response
+    finally:
+        request_context_var.reset(token)
 
 # Health Check Endpoint
 @app.get("/health")
