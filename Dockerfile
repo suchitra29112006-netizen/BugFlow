@@ -28,12 +28,11 @@ COPY backend/ ./backend/
 # Copy Built Frontend Output into backend expected directory path
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Expose Railway's dynamic PORT environment variable (default 8000)
-ENV PORT=8000
-EXPOSE 8000
+# Expose Railway's dynamic PORT environment variable (default 8080)
+EXPOSE 8080
 
 # Set Working Directory to backend for FastAPI imports
 WORKDIR /app/backend
 
-# Launch Application with Uvicorn
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+# Launch Application with Uvicorn on dynamic PORT (fallback 8080)
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
